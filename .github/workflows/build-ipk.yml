@@ -13,6 +13,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Set Package Release
+        run: |
+          sed -i "s/^PKG_RELEASE:=.*/PKG_RELEASE:=${GITHUB_RUN_NUMBER}/" luci-app-shinra/Makefile
+          grep '^PKG_RELEASE:=' luci-app-shinra/Makefile
+
       - name: Provision Build Environment
         run: |
           sudo apt-get update
