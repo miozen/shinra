@@ -110,10 +110,7 @@ function first_failed_readiness(checks) {
 		"tun_up",
 		"table_2022_has_tun",
 		"ip_rule_has_table_2022",
-		"ip_rule_has_fwmark_redirect",
-		"clash_api_available",
-		"selector_available",
-		"selector_has_now"
+		"ip_rule_has_fwmark_redirect"
 	];
 
 	for (let key in order) {

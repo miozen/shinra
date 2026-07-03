@@ -24,7 +24,7 @@ function write_last_apply_result(detail) {
 
 function runtime_observation_ready(observed) {
 	let state = json(observed.state);
-	return observed.running && state.tun_exists == true && state.clash_api_available == true;
+	return observed.running && state.tun_exists == true;
 }
 
 function wait_runtime_ready(trace_id) {

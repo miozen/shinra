@@ -11,6 +11,8 @@ const PATH = {
 	PROFILE_SOURCE: "/etc/shinra/profile-source.json",
 	NOTIFY: "/etc/shinra/notify.json",
 	NOTIFY_STATE: "/var/run/shinra/notify.state.json",
+	DASHBOARD_SOURCE: "/etc/shinra/dashboard.json",
+	DASHBOARD_DIR: "/www/shinra/dashboard",
 	ZASHBOARD_SOURCE: "/etc/shinra/zashboard-source.json",
 	ZASHBOARD_DIR: "/www/shinra/zashboard",
 	SUBSCRIPTIONS: "/etc/shinra/subscriptions.json",

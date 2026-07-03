@@ -6,10 +6,11 @@ let modules = {};
 let loaded = {};
 
 const tabs = [
-	{ id: 'profile', label: _('\u6a21\u677f'), module: 'view.shinra.profile' },
-	{ id: 'subscriptions', label: _('\u8ba2\u9605'), module: 'view.shinra.subscriptions' },
-	{ id: 'rules', label: _('\u89c4\u5219\u96c6'), module: 'view.shinra.rulesets' },
-	{ id: 'notify', label: _('\u901a\u77e5'), module: 'view.shinra.notify' }
+	{ id: 'profile', label: _('模板'), module: 'view.shinra.profile' },
+	{ id: 'subscriptions', label: _('订阅'), module: 'view.shinra.subscriptions' },
+	{ id: 'rules', label: _('规则集'), module: 'view.shinra.rulesets' },
+	{ id: 'panel', label: _('面板'), module: 'view.shinra.panel_settings' },
+	{ id: 'notify', label: _('通知'), module: 'view.shinra.notify' }
 ];
 
 function sectionStyle() {
@@ -98,7 +99,7 @@ function renderActiveTab() {
 	if (!mod || typeof mod.render !== 'function') {
 		return E('div', { 'style': sectionStyle() }, [
 			E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, tab.label),
-			E('p', { 'style': 'margin: 0; color: #667; line-height: 1.35;' }, _('\u8be5\u8d44\u6e90\u9875\u6682\u4e0d\u53ef\u7528\u3002'))
+			E('p', { 'style': 'margin: 0; color: #667; line-height: 1.35;' }, _('该资源页暂不可用。'))
 		]);
 	}
 
@@ -110,8 +111,8 @@ function renderActiveTab() {
 function renderPage() {
 	return E('div', { 'id': 'shinra-resources-root', 'class': 'cbi-map' }, [
 		pageHeader(
-			_('\u8d44\u6e90\u7ba1\u7406'),
-			_('\u7ba1\u7406\u6a21\u677f\u3001\u8ba2\u9605\u6e90\u3001\u89c4\u5219\u96c6\u548c\u81ea\u52a8\u4efb\u52a1\u901a\u77e5\u3002\u4fdd\u5b58\u53ea\u5199\u5165\u8bbe\u7f6e\uff1b\u5237\u65b0\u3001\u540c\u6b65\u548c\u66f4\u65b0\u53ef\u80fd\u4f5c\u4e3a\u540e\u53f0\u4efb\u52a1\u8fd0\u884c\u3002')
+			_('资源管理'),
+			_('管理模板、订阅源、规则集、面板和自动任务通知。保存只写入设置；刷新、同步和更新可能作为后台任务运行。')
 		),
 		tabBar(),
 		renderActiveTab()

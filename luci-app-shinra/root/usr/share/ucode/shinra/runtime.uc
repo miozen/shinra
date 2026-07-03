@@ -8,7 +8,6 @@ import { PATH, BIN } from 'shinra.core.constants';
 import { Success, Fail } from 'shinra.core.result';
 import { ERR } from 'shinra.core.error';
 import { read_optional_text, write_runtime_text_atomic, parse_json_object, json_escape, file_exists, ExecResult } from 'shinra.core.utils';
-import { api_available, clash_api_url } from 'shinra.clash';
 import { runtime_ownership_observe, runtime_ownership_guard } from 'shinra.core.runtime_ownership';
 import { runtime_cleanup_observe, runtime_cleanup_shinra_owned } from 'shinra.core.runtime_cleanup';
 
@@ -88,13 +87,6 @@ function tun_exists(trace_id, tun_name) {
 	return result.code == 0;
 }
 
-function clash_api_available(trace_id, running) {
-	if (!running)
-		return false;
-
-	return api_available(trace_id, clash_api_url("/proxies"));
-}
-
 function cleanup_observe_safe(trace_id) {
 	try {
 		return runtime_cleanup_observe(trace_id);
@@ -131,7 +123,7 @@ function runtime_state_json(trace_id, service_result, ownership) {
 		"\"runtime_config_hash\":\"" + json_escape(runtime_hash(trace_id)) + "\"," +
 		"\"tun_exists\":" + (tun_exists(trace_id, tun_name) ? "true" : "false") + "," +
 		"\"tun_name\":\"" + json_escape(tun_name) + "\"," +
-		"\"clash_api_available\":" + (clash_api_available(trace_id, running) ? "true" : "false") + "," +
+		"\"clash_api_available\":false," +
 		"\"last_apply_result\":\"" + json_escape(last_apply_result) + "\"," +
 		"\"recent_error\":\"" + json_escape(last_error) + "\"," +
 		"\"shinra_managed_processes\":" + sprintf("%J", ownership.shinra_managed_processes) + "," +
@@ -245,7 +237,7 @@ function runtime_start_sequence(trace_id) {
 
 function runtime_observation_ready(observed) {
 	let state = json(observed.state);
-	return observed.running && state.tun_exists == true && state.clash_api_available == true;
+	return observed.running && state.tun_exists == true;
 }
 
 function wait_runtime_ready(trace_id) {

@@ -190,7 +190,7 @@ function runtime_ready_state(observed) {
 	if (type(observed) != "object" || observed == null)
 		return false;
 	let state = json(observed.state);
-	return observed.running == true && state.tun_exists == true && state.clash_api_available == true;
+	return observed.running == true && state.tun_exists == true;
 }
 
 function verify_runtime_stable(trace_id) {
@@ -217,7 +217,6 @@ function verify_runtime_stable(trace_id) {
 			consecutive_ready: consecutive,
 			sing_box_running: state.sing_box_running == true,
 			tun_exists: state.tun_exists == true,
-			clash_api_available: state.clash_api_available == true,
 			checked_at: state.checked_at || ""
 		});
 

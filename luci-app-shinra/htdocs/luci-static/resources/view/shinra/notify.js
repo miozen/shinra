@@ -115,17 +115,17 @@ function refreshPage() {
 }
 
 function saveSettings() {
-	setStatus(_('\u6b63\u5728\u4fdd\u5b58\u901a\u77e5\u8bbe\u7f6e...'), true);
+	setStatus(_('正在保存通知设置...'), true);
 	return callNotifySettingsSave(JSON.stringify(settingsFromInputs())).then(function(result) {
 		if (result && result.ok) {
 			settingsResult = {
 				ok: true,
 				data: result.data || {}
 			};
-			setStatus(_('\u901a\u77e5\u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002\u81ea\u52a8\u4efb\u52a1\u4f1a\u4f7f\u7528\u8fd9\u4e9b\u8bbe\u7f6e\u3002'), true);
+			setStatus(_('通知设置已保存。自动任务会使用这些设置。'), true);
 			return result;
 		}
-		setStatus('%s: %s'.format(result && (result.message || result.code) || _('保存失败'), result && (result.detail || result.code) || _('\u65e0\u8be6\u7ec6\u4fe1\u606f')), false);
+		setStatus('%s: %s'.format(result && (result.message || result.code) || _('保存失败'), result && (result.detail || result.code) || _('无详细信息')), false);
 		return result;
 	}).catch(function(error) {
 		setStatus(error.message || String(error), false);
@@ -133,19 +133,19 @@ function saveSettings() {
 }
 
 function testTelegram() {
-	setStatus(_('\u6d4b\u8bd5\u524d\u6b63\u5728\u4fdd\u5b58\u8bbe\u7f6e...'), true);
+	setStatus(_('测试前正在保存设置...'), true);
 	return saveSettings().then(function(saveResult) {
 		if (!(saveResult && saveResult.ok))
 			return saveResult;
-		setStatus(_('\u6b63\u5728\u53d1\u9001 Telegram \u6d4b\u8bd5...'), true);
+		setStatus(_('正在发送 Telegram 测试...'), true);
 		return callNotifyTestTelegram();
 	}).then(function(result) {
 		if (!(result && result.ok !== undefined))
 			return result;
 		if (result && result.ok)
-			setStatus(_('Telegram \u6d4b\u8bd5\u5df2\u53d1\u9001\u3002'), true);
+			setStatus(_('Telegram 测试已发送。'), true);
 		else {
-			setStatus('%s: %s'.format(result && (result.message || result.code) || _('Telegram \u6d4b\u8bd5\u5931\u8d25'), result && (result.detail || result.code) || _('\u65e0\u8be6\u7ec6\u4fe1\u606f')), false);
+			setStatus('%s: %s'.format(result && (result.message || result.code) || _('Telegram 测试失败'), result && (result.detail || result.code) || _('无详细信息')), false);
 		}
 		return result;
 	}).catch(function(error) {
@@ -158,7 +158,7 @@ function renderPage() {
 	const tg = settings.telegram;
 
 	return E('div', { 'id': 'shinra-notify-root', 'class': 'cbi-map' }, [
-		pageHeader(_('\u901a\u77e5'), _('Telegram \u901a\u77e5\u4ec5\u7528\u4e8e\u65e0\u4eba\u503c\u5b88\u7684\u81ea\u52a8\u8d44\u6e90\u66f4\u65b0\uff0c\u4f8b\u5982\u8ba2\u9605\u5237\u65b0\u548c\u89c4\u5219\u96c6\u540c\u6b65\u5931\u8d25\u3002\u624b\u5de5\u64cd\u4f5c\u4e0d\u4f1a\u53d1\u9001\u901a\u77e5\u3002')),
+		pageHeader(_('通知'), _('Telegram 通知仅用于无人值守的自动资源更新，例如订阅刷新和规则集同步失败。手工操作不会发送通知。')),
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('Telegram')),
 			E('div', {
@@ -176,42 +176,42 @@ function renderPage() {
 					'type': 'checkbox',
 					'checked': tg.enabled ? 'checked' : null
 				}),
-				E('span', {}, _('\u4e3a\u81ea\u52a8\u8d44\u6e90\u4efb\u52a1\u542f\u7528 Telegram \u901a\u77e5'))
+				E('span', {}, _('为自动资源任务启用 Telegram 通知'))
 			]),
-			field(_('\u901a\u77e5'), E('select', { 'id': 'shinra-notify-mode', 'class': 'cbi-input-select', 'style': 'min-width: 220px;' }, [
-				E('option', { 'value': 'fail_only', 'selected': tg.mode === 'fail_only' ? 'selected' : null }, _('\u4ec5\u5931\u8d25')),
-				E('option', { 'value': 'all', 'selected': tg.mode === 'all' ? 'selected' : null }, _('\u6240\u6709\u7ed3\u679c'))
-			]), _('\u65e0\u4eba\u503c\u5b88\u66f4\u65b0\u5efa\u8bae\u53ea\u901a\u77e5\u5931\u8d25\u3002')),
+			field(_('通知'), E('select', { 'id': 'shinra-notify-mode', 'class': 'cbi-input-select', 'style': 'min-width: 220px;' }, [
+				E('option', { 'value': 'fail_only', 'selected': tg.mode === 'fail_only' ? 'selected' : null }, _('仅失败')),
+				E('option', { 'value': 'all', 'selected': tg.mode === 'all' ? 'selected' : null }, _('所有结果'))
+			]), _('无人值守更新建议只通知失败。')),
 			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .75rem;' }, [
-				field(_('\u673a\u5668\u4eba Token'), E('input', {
+				field(_('机器人 Token'), E('input', {
 					'id': 'shinra-notify-token',
 					'class': 'cbi-input-password',
 					'type': 'password',
 					'style': 'width: 100%; box-sizing: border-box;',
 					'value': tg.bot_token || '',
 					'placeholder': _('123456:ABC...')
-				}), _('\u53ef\u5e26 bot \u524d\u7f00\u3002')),
-				field(_('\u4f1a\u8bdd ID'), E('input', {
+				}), _('可带 bot 前缀。')),
+				field(_('会话 ID'), E('input', {
 					'id': 'shinra-notify-chat',
 					'class': 'cbi-input-text',
 					'style': 'width: 100%; box-sizing: border-box;',
 					'value': tg.chat_id || ''
-				}), _('\u7528\u6237\u3001\u7fa4\u7ec4\u6216\u9891\u9053\u7684 Chat ID\u3002')),
-				field(_('\u4f4d\u7f6e\u540d\u79f0'), E('input', {
+				}), _('用户、群组或频道的 Chat ID。')),
+				field(_('位置名称'), E('input', {
 					'id': 'shinra-notify-location',
 					'class': 'cbi-input-text',
 					'style': 'width: 100%; box-sizing: border-box;',
 					'value': tg.location_name || 'Shinra'
-				}), _('\u663e\u793a\u5728\u6d88\u606f\u6807\u9898\u4e2d\u3002')),
-				field(_('\u8bf7\u6c42\u7b56\u7565'), E('select', {
+				}), _('显示在消息标题中。')),
+				field(_('请求策略'), E('select', {
 					'id': 'shinra-notify-fetch-strategy',
 					'class': 'cbi-input-select',
 					'style': 'width: 100%; box-sizing: border-box;'
 				}, [
-					E('option', { 'value': 'proxy', 'selected': tg.fetch_strategy === 'proxy' ? 'selected' : null }, _('\u4ee3\u7406')),
-					E('option', { 'value': 'direct', 'selected': tg.fetch_strategy === 'direct' ? 'selected' : null }, _('\u76f4\u8fde'))
-				]), _('Telegram \u9ed8\u8ba4\u5efa\u8bae\u8d70\u4ee3\u7406\u3002')),
-				field(_('\u8d85\u65f6\u65f6\u95f4'), E('input', {
+					E('option', { 'value': 'proxy', 'selected': tg.fetch_strategy === 'proxy' ? 'selected' : null }, _('代理')),
+					E('option', { 'value': 'direct', 'selected': tg.fetch_strategy === 'direct' ? 'selected' : null }, _('直连'))
+				]), _('Telegram 默认建议走代理。')),
+				field(_('超时时间'), E('input', {
 					'id': 'shinra-notify-timeout',
 					'class': 'cbi-input-text',
 					'type': 'number',
@@ -219,11 +219,11 @@ function renderPage() {
 					'max': '60',
 					'style': 'width: 100%; box-sizing: border-box;',
 					'value': tg.timeout_sec || 15
-				}), _('\u5355\u4f4d\uff1a\u79d2\u3002'))
+				}), _('单位：秒。'))
 			]),
 			E('div', { 'style': 'display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem;' }, [
-				E('button', { 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return saveSettings(); } }, _('\u4fdd\u5b58\u901a\u77e5\u8bbe\u7f6e')),
-				E('button', { 'class': 'btn cbi-button cbi-button-apply', 'click': function(ev) { ev.preventDefault(); return testTelegram(); } }, _('\u4fdd\u5b58\u5e76\u53d1\u9001\u6d4b\u8bd5'))
+				E('button', { 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return saveSettings(); } }, _('保存通知设置')),
+				E('button', { 'class': 'btn cbi-button cbi-button-apply', 'click': function(ev) { ev.preventDefault(); return testTelegram(); } }, _('保存并发送测试'))
 			])
 		])
 	]);

@@ -27,6 +27,12 @@ const callConnectivityProbe = rpc.declare({
 	expect: { '': {} }
 });
 
+const callApiStatus = rpc.declare({
+	object: 'shinra',
+	method: 'api_status',
+	expect: { '': {} }
+});
+
 let activeTab = 'dataplane';
 let pageResults = {};
 
@@ -127,6 +133,7 @@ function loadErrorPanel() {
 	[
 		pageResults.diagnostics,
 		pageResults.connectivity,
+		pageResults.apiStatus,
 		pageResults.lastError,
 		pageResults.logs
 	].forEach(function(result) {
@@ -190,7 +197,6 @@ function dataplanePanel() {
 	const checks = probe.checks || {};
 	const readiness = probe.readiness || {};
 	const commands = probe.commands || {};
-	const selectors = probe.selectors || {};
 	const runtime = probe.runtime || {};
 	const logs = dataOf(pageResults.logs);
 
@@ -200,7 +206,7 @@ function dataplanePanel() {
 	return E('div', {}, [
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('数据面观测')),
-			sectionDescription(_('用于排查 TUN、auto_redirect、策略表、Clash API 和策略组可观测性。')),
+			sectionDescription(_('用于排查 TUN、auto_redirect、策略表和基础数据面状态。')),
 			checkRow(_('数据面就绪'), ready, ready ? _('ready') : (readiness.failed_check || '-')),
 			checkRow(_('Runtime 运行中'), !!checks.runtime_running, runtime.service_status || '-'),
 			checkRow(_('TUN 存在'), !!checks.tun_present, runtime.tun_name || readiness.tun_name || 'tun0'),
@@ -208,8 +214,6 @@ function dataplanePanel() {
 			checkRow(_('表 2022 指向 TUN'), !!checks.table_2022_has_tun, '-'),
 			checkRow(_('ip rule 包含表 2022'), !!checks.ip_rule_has_table_2022, '-'),
 			checkRow(_('auto_redirect 规则可观测'), !!checks.ip_rule_has_fwmark_redirect, checks.auto_redirect_mode ? _('auto_redirect mode') : '-'),
-			checkRow(_('Clash API 可访问'), !!checks.clash_api_available, checks.clash_api_available ? _('ok') : _('api_unreachable')),
-			checkRow(_('策略组可观测'), !!checks.selector_available, selectors.first_now || selectors.error || '-'),
 			checkRow(_('本机 route get 经 TUN'), !!routeDiagnostic, _('auto_redirect 模式下仅作诊断，不参与就绪判断'), true)
 		]),
 		E('div', { 'style': sectionStyle() }, [
@@ -281,8 +285,20 @@ function controlplanePanel() {
 	const files = diagnostics.files || {};
 	const lastError = dataOf(pageResults.lastError);
 	const logs = dataOf(pageResults.logs);
+	const apiStatus = dataOf(pageResults.apiStatus);
+	const official = apiStatus.official_api || {};
+	const clash = apiStatus.clash_api || {};
 
 	return E('div', {}, [
+		E('div', { 'style': sectionStyle() }, [
+			sectionTitle(_('API 状态')),
+			field(_('Official API'), official.available ? _('可用') : _('不可用')),
+			field(_('Official API 地址'), official.api_url || '-'),
+			field(_('Official API 原因'), official.reason || '-'),
+			field(_('Clash API'), clash.available ? _('可用') : _('不可用')),
+			field(_('Clash API 地址'), clash.external_controller || '-'),
+			field(_('Clash API 原因'), clash.reason || '-')
+		]),
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('控制面状态')),
 			field(_('服务状态'), service.stdout || runtime.service_status || '-'),
@@ -348,16 +364,18 @@ function redraw() {
 return view.extend({
 	load: function() {
 		return Promise.all([
+			callApiStatus().catch(function(e) { return { ok: false, message: _('API 状态加载失败'), detail: e.message || String(e) }; }),
 			callDiagnosticsGet().catch(function(e) { return { ok: false, message: _('控制面诊断加载失败'), detail: e.message || String(e) }; }),
 			callConnectivityProbe().catch(function(e) { return { ok: false, message: _('数据面诊断加载失败'), detail: e.message || String(e) }; }),
 			callLastErrorGet().catch(function(e) { return { ok: false, message: _('最近错误加载失败'), detail: e.message || String(e) }; }),
 			callLogsGet().catch(function(e) { return { ok: false, message: _('日志加载失败'), detail: e.message || String(e) }; })
 		]).then(function(results) {
 			return {
-				diagnostics: results[0],
-				connectivity: results[1],
-				lastError: results[2],
-				logs: results[3]
+				apiStatus: results[0],
+				diagnostics: results[1],
+				connectivity: results[2],
+				lastError: results[3],
+				logs: results[4]
 			};
 		});
 	},
