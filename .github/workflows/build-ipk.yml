@@ -29,7 +29,7 @@ jobs:
             -v "$PWD:/work" \
             -w /work \
             alpine:latest \
-            sh -lc "apk add --no-cache bash apk-tools coreutils findutils sed grep && bash ./scripts/build.sh apk"
+            sh -lc "apk add --no-cache bash apk-tools coreutils findutils sed grep wget ca-certificates && wget https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build -O /usr/local/bin/ipkg-build && chmod +x /usr/local/bin/ipkg-build && bash ./scripts/build.sh apk"
 
       - name: Upload Package Artifacts
         uses: actions/upload-artifact@v4
