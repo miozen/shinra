@@ -24,12 +24,15 @@ jobs:
         run: bash ./scripts/build.sh ipk
 
       - name: Build APK Package
+        env:
+          APK_SIGNING_KEY_B64: ${{ secrets.APK_SIGNING_KEY_B64 }}
         run: |
           docker run --rm \
             -v "$PWD:/work" \
+            -e APK_SIGNING_KEY_B64 \
             -w /work \
             alpine:latest \
-            sh -lc "apk add --no-cache bash apk-tools coreutils findutils sed grep wget ca-certificates && wget https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build -O /usr/local/bin/ipkg-build && chmod +x /usr/local/bin/ipkg-build && bash ./scripts/build.sh apk"
+            sh -lc 'apk add --no-cache bash apk-tools coreutils findutils sed grep ca-certificates && if [ -n "$APK_SIGNING_KEY_B64" ]; then mkdir -p build/signing && printf "%s" "$APK_SIGNING_KEY_B64" | base64 -d > build/signing/shinra.rsa && chmod 0600 build/signing/shinra.rsa && export APK_SIGNING_KEY=/work/build/signing/shinra.rsa; fi && bash ./scripts/build.sh apk'
 
       - name: Upload Package Artifacts
         uses: actions/upload-artifact@v4
