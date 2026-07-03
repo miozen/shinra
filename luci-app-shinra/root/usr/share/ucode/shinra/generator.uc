@@ -15,7 +15,7 @@ import { collect_profile_tags, normalized_nodes, collect_node_tags } from 'shinr
 import { generate_region_groups, grouped_node_tags, unmatched_node_tag_list, matched_node_count } from 'shinra.generator_groups';
 import { inject_selectors, main_selector_option_count, merge_outbounds } from 'shinra.generator_selectors';
 import { localize_rulesets } from 'shinra.generator_rulesets';
-import { apply_panel_api_policy, ensure_control_plane_proxy_inbound } from 'shinra.generator_control_plane';
+import { apply_dashboard_api_service, ensure_control_plane_proxy_inbound } from 'shinra.generator_control_plane';
 
 function generate_candidate(trace_id, req) {
 	try {
@@ -37,7 +37,7 @@ function generate_candidate(trace_id, req) {
 		let main_options = main_selector_option_count(profile);
 		merge_outbounds(profile, groups, nodes);
 		let ruleset = localize_rulesets(profile, subscriptions);
-		let panel_api = apply_panel_api_policy(profile);
+		let api_service = apply_dashboard_api_service(profile);
 		let control_proxy = ensure_control_plane_proxy_inbound(profile);
 		validate_tun_contract(profile);
 		let stripped = strip_extensions(profile);
@@ -61,10 +61,26 @@ function generate_candidate(trace_id, req) {
 			ruleset_localized: ruleset.localized,
 			ruleset_preserved_remote: ruleset.preserved_remote,
 			ruleset_missing: ruleset.missing,
-			panel_api_enabled: panel_api.enabled,
-			panel_api_external_controller: panel_api.external_controller,
-			panel_api_secret_configured: panel_api.secret_configured,
-			panel_api_source: panel_api.source,
+			api_service_enabled: api_service.enabled,
+			api_service_inserted: api_service.inserted,
+			api_service_existing: api_service.existing,
+			api_service_tag: api_service.tag,
+			api_service_listen: api_service.listen,
+			api_service_port: api_service.listen_port,
+			api_service_secret_configured: api_service.secret_configured,
+			api_service_preserved_clash_api: api_service.preserved_clash_api,
+			clash_api_enabled: api_service.clash_api.enabled,
+			clash_api_source: api_service.clash_api.source,
+			clash_api_external_controller: api_service.clash_api.external_controller,
+			clash_api_secret_configured: api_service.clash_api.secret_configured,
+			clash_api_profile_existing: api_service.clash_api.profile_existing,
+			clash_api_profile_conflict: api_service.clash_api.profile_conflict,
+			clash_api_dashboard_enabled: api_service.clash_api.dashboard_enabled,
+			clash_api_dashboard_conflict: api_service.clash_api.dashboard_conflict,
+			clash_api_conflict_resolved: api_service.clash_api.conflict_resolved,
+			dashboard_enabled: api_service.dashboard_enabled,
+			dashboard_path: api_service.dashboard_path,
+			dashboard_download_url: api_service.dashboard_download_url,
 			control_proxy_inserted: control_proxy.inserted,
 			control_proxy_existing: control_proxy.existing,
 			control_proxy_tag: control_proxy.tag,
@@ -77,6 +93,8 @@ function generate_candidate(trace_id, req) {
 		let err = "" + e;
 		if (substr(err, 0, 13) == "TUN_CONTRACT:")
 			return Fail(ERR.E_TUN_CONTRACT_FAILED, "Profile TUN contract failed", trace_id, substr(err, 13));
+		if (substr(err, 0, 24) == "CLASH_API_PORT_CONFLICT:")
+			return Fail(ERR.E_CLASH_API_PORT_CONFLICT, "Clash API port conflicts with official API service", trace_id, substr(err, 24));
 		return Fail(ERR.E_GENERATE_FAILED, "Failed to generate Candidate", trace_id, err);
 	}
 }

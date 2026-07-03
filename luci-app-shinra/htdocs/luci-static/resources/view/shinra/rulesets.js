@@ -227,7 +227,7 @@ function inlineActionStatus() {
 function notifyFailure(result) {
 	if (!result || result.ok)
 		return;
-	setStatus('%s: %s'.format(result.message || result.code || _('\u672a\u77e5\u9519\u8bef'), result.detail || result.code || _('\u65e0\u8be6\u7ec6\u4fe1\u606f')), false);
+	setStatus('%s: %s'.format(result.message || result.code || _('未知错误'), result.detail || result.code || _('无详细信息')), false);
 }
 
 function delay(ms) {
@@ -244,7 +244,7 @@ function rulesetTaskFrom(result) {
 function rulesetTaskCounts(task) {
 	const completed = Number(task.completed_count || 0);
 	const meta = task.meta && typeof task.meta === 'object' ? task.meta : {};
-	let text = _('\u8fdb\u5ea6 %d / %d\uff0c\u5df2\u66f4\u65b0 %d\uff0c\u672a\u53d8\u5316 %d\uff0c\u5931\u8d25 %d').format(
+	let text = _('进度 %d / %d，已更新 %d，未变化 %d，失败 %d').format(
 		completed,
 		Number(task.total_count || 0),
 		Number(task.updated_count || 0),
@@ -253,13 +253,13 @@ function rulesetTaskCounts(task) {
 	);
 	const checked = Number(task.checked_count || 0);
 	if (checked)
-		text += _('\uff1b\u5b8c\u6574\u6bd4\u5bf9 %d').format(checked);
+		text += _('；完整比对 %d').format(checked);
 	if (task.current_item)
-		text += _('\uff1b\u5f53\u524d %s').format(task.current_item);
+		text += _('；当前 %s').format(task.current_item);
 	if (meta.current_url_redacted)
-		text += _('\uff1b\u6765\u6e90 %s').format(meta.current_url_redacted);
+		text += _('；来源 %s').format(meta.current_url_redacted);
 	if (task.last_error)
-		text += _('\uff1b\u6700\u8fd1\u9519\u8bef %s').format(task.last_error);
+		text += _('；最近错误 %s').format(task.last_error);
 	return text;
 }
 
@@ -269,17 +269,17 @@ function rulesetTaskStatusText(task) {
 	const message = task.message || '';
 
 	if (status === 'starting')
-		return _('\u89c4\u5219\u96c6\u540c\u6b65\u5df2\u6392\u961f\u3002');
+		return _('规则集同步已排队。');
 	if (status === 'running')
-		return _('\u89c4\u5219\u96c6\u6b63\u5728\u540c\u6b65\uff1a%s').format(counts);
+		return _('规则集正在同步：%s').format(counts);
 	if (status === 'success')
-		return _('\u89c4\u5219\u96c6\u540c\u6b65\u5b8c\u6210\uff1a%s%s').format(counts, message ? ' - ' + message : '');
+		return _('规则集同步完成：%s%s').format(counts, message ? ' - ' + message : '');
 	if (status === 'partial')
-		return _('\u89c4\u5219\u96c6\u90e8\u5206\u540c\u6b65\u5b8c\u6210\uff1a%s%s').format(counts, message ? ' - ' + message : '');
+		return _('规则集部分同步完成：%s%s').format(counts, message ? ' - ' + message : '');
 	if (status === 'failed')
-		return _('\u89c4\u5219\u96c6\u540c\u6b65\u5931\u8d25\uff1a%s').format(message || counts);
+		return _('规则集同步失败：%s').format(message || counts);
 
-	return message || _('\u672a\u89c2\u6d4b\u5230\u89c4\u5219\u96c6\u540c\u6b65\u72b6\u6001\u3002');
+	return message || _('未观测到规则集同步状态。');
 }
 
 function rulesetDownloadOneStatusText(task) {
@@ -288,15 +288,15 @@ function rulesetDownloadOneStatusText(task) {
 	const status = task.status || '-';
 
 	if (status === 'starting')
-		return _('\u89c4\u5219\u96c6 %s \u4e0b\u8f7d\u5df2\u6392\u961f\u3002').format(tag);
+		return _('规则集 %s 下载已排队。').format(tag);
 	if (status === 'running')
-		return _('\u6b63\u5728\u4e0b\u8f7d\u89c4\u5219\u96c6 %s\u3002').format(tag);
+		return _('正在下载规则集 %s。').format(tag);
 	if (status === 'success')
-		return _('\u89c4\u5219\u96c6 %s \u5df2\u4e0b\u8f7d\u3002').format(tag);
+		return _('规则集 %s 已下载。').format(tag);
 	if (status === 'failed')
-		return _('\u89c4\u5219\u96c6 %s \u4e0b\u8f7d\u5931\u8d25\uff1a%s').format(tag, task.last_error || task.message || '-');
+		return _('规则集 %s 下载失败：%s').format(tag, task.last_error || task.message || '-');
 
-	return task.message || _('\u672a\u89c2\u6d4b\u5230\u89c4\u5219\u96c6\u4e0b\u8f7d\u72b6\u6001\u3002');
+	return task.message || _('未观测到规则集下载状态。');
 }
 
 function updatePolicyFromFields() {
@@ -315,16 +315,16 @@ function updatePolicyFromFields() {
 
 function modeHelpText() {
 	return policy.mode === 'local' ?
-		_('\u672c\u5730\u6a21\u5f0f\u4f1a\u5728\u751f\u6210\u5019\u9009\u914d\u7f6e\u65f6\u628a\u89c4\u5219\u96c6\u6539\u5199\u5230 /etc/shinra/rules\u3002\u7f3a\u5931\u672c\u5730\u6587\u4ef6\u4f1a\u963b\u6b62\u5019\u9009\u914d\u7f6e\u751f\u6210\u3002') :
-		_('\u8fdc\u7a0b\u6a21\u5f0f\u4fdd\u7559 main-profile.json \u4e2d\u7684 rule_set \u58f0\u660e\uff0c\u4e0d\u8981\u6c42\u672c\u5730\u89c4\u5219\u96c6\u6587\u4ef6\u3002');
+		_('本地模式会在生成候选配置时把规则集改写到 /etc/shinra/rules。缺失本地文件会阻止候选配置生成。') :
+		_('远程模式保留 main-profile.json 中的 rule_set 声明，不要求本地规则集文件。');
 }
 
 function modeSettings() {
 	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('\u6a21\u5f0f\u8bbe\u7f6e')),
+		sectionTitle(_('模式设置')),
 		E('div', { 'style': 'display: flex; gap: .65rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: .65rem;' }, [
 			E('label', { 'style': 'min-width: 220px;' }, [
-				fieldLabel(_('\u89c4\u5219\u96c6\u6a21\u5f0f')),
+				fieldLabel(_('规则集模式')),
 				E('select', {
 					'id': 'shinra-ruleset-mode',
 					'class': 'cbi-input-select',
@@ -337,12 +337,12 @@ function modeSettings() {
 						redraw();
 					}
 				}, [
-					E('option', { 'value': 'remote', 'selected': policy.mode === 'remote' ? 'selected' : null }, _('\u8fdc\u7a0b\u6a21\u5f0f')),
-					E('option', { 'value': 'local', 'selected': policy.mode === 'local' ? 'selected' : null }, _('\u672c\u5730\u6a21\u5f0f'))
+					E('option', { 'value': 'remote', 'selected': policy.mode === 'remote' ? 'selected' : null }, _('远程模式')),
+					E('option', { 'value': 'local', 'selected': policy.mode === 'local' ? 'selected' : null }, _('本地模式'))
 				])
 			]),
-			E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return savePolicy(); } }, _('\u4fdd\u5b58\u8bbe\u7f6e')),
-			policy.mode === 'local' ? E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-apply', 'click': function(ev) { ev.preventDefault(); return syncRulesets(); } }, _('\u540c\u6b65\u6240\u9700\u89c4\u5219\u96c6')) : ''
+			E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return savePolicy(); } }, _('保存设置')),
+			policy.mode === 'local' ? E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-apply', 'click': function(ev) { ev.preventDefault(); return syncRulesets(); } }, _('同步所需规则集')) : ''
 		]),
 		E('div', { 'style': mutedStyle() }, modeHelpText()),
 		inlineActionStatus()
@@ -354,21 +354,21 @@ function localSyncSettings() {
 		return E('div', { 'style': 'display: none;' }, '');
 
 	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('\u672c\u5730\u540c\u6b65\u8bbe\u7f6e')),
-		E('h4', { 'style': 'margin: .25rem 0 .65rem;' }, _('\u89c4\u5219\u96c6\u6765\u6e90')),
+		sectionTitle(_('本地同步设置')),
+		E('h4', { 'style': 'margin: .25rem 0 .65rem;' }, _('规则集来源')),
 		E('div', { 'style': 'display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; margin-bottom: .75rem;' }, [
 			E('label', {}, [
-				fieldLabel(_('\u79c1\u6709\u4ed3\u5e93')),
+				fieldLabel(_('私有仓库')),
 				E('input', {
 					'id': 'shinra-ruleset-private-repo',
 					'class': 'cbi-input-text',
 					'style': 'width: 100%; box-sizing: border-box;',
-					'placeholder': _('\u53ef\u9009\u7684\u79c1\u6709\u4ed3\u5e93\u5730\u5740'),
+					'placeholder': _('可选的私有仓库地址'),
 					'value': policy.repositories.private
 				})
 			]),
 			E('label', {}, [
-				fieldLabel(_('\u516c\u5171\u4ed3\u5e93')),
+				fieldLabel(_('公共仓库')),
 				E('input', {
 					'id': 'shinra-ruleset-public-repo',
 					'class': 'cbi-input-text',
@@ -377,13 +377,13 @@ function localSyncSettings() {
 				})
 			])
 		]),
-		E('h4', { 'style': 'margin: .25rem 0 .65rem;' }, _('\u540c\u6b65\u65b9\u5f0f')),
+		E('h4', { 'style': 'margin: .25rem 0 .65rem;' }, _('同步方式')),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .6rem; margin-bottom: .65rem; align-items: start;' }, [
 			E('label', {}, [
-				fieldLabel(_('\u4e0b\u8f7d\u7b56\u7565')),
+				fieldLabel(_('下载策略')),
 				E('select', { 'id': 'shinra-ruleset-fetch-strategy', 'class': 'cbi-input-select', 'style': 'width: 100%;' }, [
-					E('option', { 'value': 'direct', 'selected': policy.fetch_strategy === 'direct' ? 'selected' : null }, _('\u76f4\u8fde')),
-					E('option', { 'value': 'proxy', 'selected': policy.fetch_strategy === 'proxy' ? 'selected' : null }, _('\u4ee3\u7406'))
+					E('option', { 'value': 'direct', 'selected': policy.fetch_strategy === 'direct' ? 'selected' : null }, _('直连')),
+					E('option', { 'value': 'proxy', 'selected': policy.fetch_strategy === 'proxy' ? 'selected' : null }, _('代理'))
 				])
 			]),
 			E('div', { 'style': 'display: flex; gap: .65rem; align-items: flex-end; flex-wrap: wrap;' }, [
@@ -398,10 +398,10 @@ function localSyncSettings() {
 							redraw();
 						}
 					}),
-					E('span', {}, _('\u6bcf\u65e5\u81ea\u52a8\u540c\u6b65'))
+					E('span', {}, _('每日自动同步'))
 				]),
 				policy.auto_update ? E('label', { 'style': 'min-width: 130px; max-width: 160px;' }, [
-					fieldLabel(_('\u6bcf\u65e5\u540c\u6b65\u65f6\u95f4')),
+					fieldLabel(_('每日同步时间')),
 					E('input', {
 						'id': 'shinra-ruleset-update-hour',
 						'class': 'cbi-input-text',
@@ -423,11 +423,11 @@ function localSyncSettings() {
 							redraw();
 						}
 					}),
-					E('span', {}, _('\u66f4\u65b0\u540e\u81ea\u52a8\u5e94\u7528\uff08\u5b9e\u9a8c\uff09'))
+					E('span', {}, _('更新后自动应用（实验）'))
 				]) : ''
 			])
 		]),
-		E('div', { 'style': mutedStyle() }, _('\u4e0b\u8f7d\u987a\u5e8f\uff1a\u79c1\u6709\u4ed3\u5e93\u4f18\u5148\uff0c\u516c\u5171\u4ed3\u5e93\u515c\u5e95\uff0c\u6700\u540e\u4f7f\u7528\u6a21\u677f\u4e2d\u7684\u539f\u59cb\u5730\u5740\u3002'))
+		E('div', { 'style': mutedStyle() }, _('下载顺序：私有仓库优先，公共仓库兜底，最后使用模板中的原始地址。'))
 	]);
 }
 
@@ -504,10 +504,10 @@ function requiredInventory() {
 
 function rulesetStatus(entry) {
 	if (!entry || entry.status === 'missing')
-		return statusPill(_('\u7f3a\u5931'), 'error');
+		return statusPill(_('缺失'), 'error');
 	if (entry.status === 'extra')
-		return statusPill(_('\u672a\u4f7f\u7528'), 'warning');
-	return statusPill(_('\u5df2\u5c31\u7eea'), 'ok');
+		return statusPill(_('未使用'), 'warning');
+	return statusPill(_('已就绪'), 'ok');
 }
 
 function sourceText(entry) {
@@ -518,7 +518,7 @@ function sourceText(entry) {
 }
 
 function templateRequiredText(entry) {
-	return entry && entry.required === false ? _('\u5426') : _('\u662f');
+	return entry && entry.required === false ? _('否') : _('是');
 }
 
 function pendingRulesetTags() {
@@ -543,7 +543,7 @@ function isPendingRuleset(tag) {
 
 function rowStatus(entry) {
 	if (entry && isPendingRuleset(entry.tag))
-		return statusPill(_('\u5f85\u9a8c\u8bc1'), 'warning');
+		return statusPill(_('待验证'), 'warning');
 	return rulesetStatus(entry);
 }
 
@@ -562,7 +562,7 @@ function rulesetItems(inv) {
 
 function rulesetRows(items) {
 	if (!items.length)
-		return [ E('div', { 'style': 'padding: .8rem; color: #667; text-align: center;' }, _('\u6ca1\u6709\u89c2\u6d4b\u5230\u89c4\u5219\u96c6\u3002')) ];
+		return [ E('div', { 'style': 'padding: .8rem; color: #667; text-align: center;' }, _('没有观测到规则集。')) ];
 
 	return items.map(function(entry) {
 		const required = !(entry && entry.required === false);
@@ -583,7 +583,7 @@ function rulesetRows(items) {
 					ev.preventDefault();
 					return downloadOneRuleset(entry.tag);
 				}
-			}, busy ? _('\u4e0b\u8f7d\u4e2d') : entry.status === 'missing' ? _('\u4e0b\u8f7d') : _('\u91cd\u65b0\u4e0b\u8f7d')) : '-')
+			}, busy ? _('下载中') : entry.status === 'missing' ? _('下载') : _('重新下载')) : '-')
 		]);
 	});
 }
@@ -592,14 +592,14 @@ function rulesetListContent(items) {
 	return E('div', { 'style': 'overflow-x: auto; margin-top: .75rem;' }, [
 		E('div', { 'style': 'min-width: 1260px;' }, [
 			E('div', { 'style': 'display: grid; grid-template-columns: minmax(150px, 1.1fr) 92px 84px minmax(220px, 1.7fr) 86px 120px minmax(220px, 1.8fr) 98px; gap: .75rem; color: #667; font-size: 12px; padding-bottom: .4rem; border-bottom: 1px solid #ddd;' }, [
-				E('div', {}, _('\u6807\u7b7e')),
-				E('div', {}, _('\u72b6\u6001')),
-				E('div', {}, _('\u6a21\u677f\u9700\u8981')),
-				E('div', {}, _('\u672c\u5730\u6587\u4ef6')),
-				E('div', { 'style': 'text-align: right;' }, _('\u5927\u5c0f')),
-				E('div', { 'style': 'text-align: right;' }, _('\u4fee\u6539\u65f6\u95f4')),
-				E('div', {}, _('\u4e0b\u8f7d\u6765\u6e90')),
-				E('div', {}, _('\u64cd\u4f5c'))
+				E('div', {}, _('标签')),
+				E('div', {}, _('状态')),
+				E('div', {}, _('模板需要')),
+				E('div', {}, _('本地文件')),
+				E('div', { 'style': 'text-align: right;' }, _('大小')),
+				E('div', { 'style': 'text-align: right;' }, _('修改时间')),
+				E('div', {}, _('下载来源')),
+				E('div', {}, _('操作'))
 			]),
 			E('div', {}, rulesetRows(items))
 		])
@@ -613,10 +613,10 @@ function rulesetList() {
 	const artifact = artifactStatusData();
 	let suffix = '';
 	if (artifact.pending)
-		suffix = _('\uff0c\u5f85\u8fd0\u884c\u9a8c\u8bc1 %d').format(Number(artifact.changed_count || 0));
+		suffix = _('，待运行验证 %d').format(Number(artifact.changed_count || 0));
 	else if (Number(artifact.last_good_count || 0) > 0)
-		suffix = _('\uff0c\u5df2\u786e\u8ba4\u57fa\u7ebf %d').format(Number(artifact.last_good_count || 0));
-	const subtitle = _('\u9700\u8981 %d\uff0c\u5df2\u5c31\u7eea %d\uff0c\u7f3a\u5931 %d\uff0c\u672a\u4f7f\u7528 %d%s').format(
+		suffix = _('，已确认基线 %d').format(Number(artifact.last_good_count || 0));
+	const subtitle = _('需要 %d，已就绪 %d，缺失 %d，未使用 %d%s').format(
 		summary.required_count || 0,
 		summary.ready_count || 0,
 		summary.missing_count || 0,
@@ -632,11 +632,11 @@ function rulesetList() {
 		'style': sectionStyle()
 	}, [
 		E('summary', { 'style': 'cursor: pointer; list-style-position: inside;' }, [
-			E('span', { 'style': 'font-weight: 700;' }, _('\u89c4\u5219\u96c6\u5217\u8868')),
+			E('span', { 'style': 'font-weight: 700;' }, _('规则集列表')),
 			E('span', { 'style': 'display: block; color: #667; font-size: 12px; margin-top: .25rem;' }, subtitle)
 		]),
 		E('div', { 'style': 'color: #667; margin-top: .75rem; overflow-wrap: anywhere;' },
-			_('\u4ee5\u5217\u8868\u5f62\u5f0f\u5c55\u793a main-profile.json \u5f15\u7528\u7684\u89c4\u5219\u96c6\u548c /etc/shinra/rules \u672c\u5730\u6587\u4ef6\u72b6\u6001\u3002')),
+			_('以列表形式展示 main-profile.json 引用的规则集和 /etc/shinra/rules 本地文件状态。')),
 		rulesetListContent(items)
 	]);
 }
@@ -644,7 +644,7 @@ function rulesetList() {
 function savePolicy() {
 	const token = ++actionToken;
 	updatePolicyFromFields();
-	setStatus(_('\u6b63\u5728\u4fdd\u5b58\u8bbe\u7f6e...'), true);
+	setStatus(_('正在保存设置...'), true);
 
 	return callRulesetPolicySave(JSON.stringify(policy)).then(function(result) {
 		if (token !== actionToken)
@@ -652,10 +652,10 @@ function savePolicy() {
 		notifyFailure(result);
 		if (result && result.ok) {
 			policy = normalizePolicy(dataOf(result).policy);
-			setStatus(_('\u89c4\u5219\u96c6\u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002'), true);
+			setStatus(_('规则集设置已保存。'), true);
 			redraw();
 		} else {
-			setStatus(_('\u4fdd\u5b58\u5931\u8d25\u3002'), false);
+			setStatus(_('保存失败。'), false);
 		}
 		return result;
 	}).catch(function(error) {
@@ -671,7 +671,7 @@ function pollRulesetSync(token, attempt) {
 			return statusResult;
 		notifyFailure(statusResult);
 		if (!statusResult || !statusResult.ok) {
-			setStatus(_('\u8bfb\u53d6\u89c4\u5219\u96c6\u540c\u6b65\u72b6\u6001\u5931\u8d25\u3002'), false);
+			setStatus(_('读取规则集同步状态失败。'), false);
 			return refreshAll();
 		}
 
@@ -681,7 +681,7 @@ function pollRulesetSync(token, attempt) {
 		if (status === 'starting' || status === 'running') {
 			setStatus(rulesetTaskStatusText(task), true);
 			if (attempt >= 180) {
-				setStatus(_('\u89c4\u5219\u96c6\u540c\u6b65\u4ecd\u5728\u540e\u53f0\u8fd0\u884c\u3002\u7a0d\u540e\u8fd4\u56de\u53ef\u67e5\u770b\u7ed3\u679c\u3002'), true);
+				setStatus(_('规则集同步仍在后台运行。稍后返回可查看结果。'), true);
 				return refreshAll();
 			}
 
@@ -707,7 +707,7 @@ function pollRulesetDownloadOne(token, attempt) {
 			return statusResult;
 		notifyFailure(statusResult);
 		if (!statusResult || !statusResult.ok) {
-			setStatus(_('\u8bfb\u53d6\u89c4\u5219\u96c6\u4e0b\u8f7d\u72b6\u6001\u5931\u8d25\u3002'), false);
+			setStatus(_('读取规则集下载状态失败。'), false);
 			downloadingTag = '';
 			return refreshAll();
 		}
@@ -718,7 +718,7 @@ function pollRulesetDownloadOne(token, attempt) {
 		if (status === 'starting' || status === 'running') {
 			setStatus(rulesetDownloadOneStatusText(task), true);
 			if (attempt >= 120) {
-				setStatus(_('\u89c4\u5219\u96c6\u4e0b\u8f7d\u4ecd\u5728\u540e\u53f0\u8fd0\u884c\u3002\u7a0d\u540e\u8fd4\u56de\u53ef\u67e5\u770b\u7ed3\u679c\u3002'), true);
+				setStatus(_('规则集下载仍在后台运行。稍后返回可查看结果。'), true);
 				downloadingTag = '';
 				return refreshAll();
 			}
@@ -744,7 +744,7 @@ function downloadOneRuleset(tag) {
 	const token = ++actionToken;
 	downloadingTag = tag || '';
 	rulesetListOpen = true;
-	setStatus(_('\u6b63\u5728\u542f\u52a8\u89c4\u5219\u96c6 %s \u4e0b\u8f7d...').format(downloadingTag || '-'), true);
+	setStatus(_('正在启动规则集 %s 下载...').format(downloadingTag || '-'), true);
 	redraw();
 
 	return callRulesetDownloadOneStart(tag).then(function(startResult) {
@@ -753,7 +753,7 @@ function downloadOneRuleset(tag) {
 		notifyFailure(startResult);
 		if (!startResult || !startResult.ok) {
 			downloadingTag = '';
-			setStatus(_('\u542f\u52a8\u89c4\u5219\u96c6\u4e0b\u8f7d\u5931\u8d25\u3002'), false);
+			setStatus(_('启动规则集下载失败。'), false);
 			return refreshAll();
 		}
 
@@ -772,14 +772,14 @@ function downloadOneRuleset(tag) {
 function syncRulesets() {
 	const token = ++actionToken;
 	updatePolicyFromFields();
-	setStatus(_('\u6b63\u5728\u4fdd\u5b58\u8bbe\u7f6e\u5e76\u542f\u52a8\u89c4\u5219\u96c6\u540c\u6b65...'), true);
+	setStatus(_('正在保存设置并启动规则集同步...'), true);
 
 	return callRulesetPolicySave(JSON.stringify(policy)).then(function(saveResult) {
 		if (token !== actionToken)
 			return saveResult;
 		notifyFailure(saveResult);
 		if (!saveResult || !saveResult.ok) {
-			setStatus(_('\u4fdd\u5b58\u5931\u8d25\u3002'), false);
+			setStatus(_('保存失败。'), false);
 			return saveResult;
 		}
 
@@ -790,7 +790,7 @@ function syncRulesets() {
 			return startResult;
 		notifyFailure(startResult);
 		if (!startResult || !startResult.ok) {
-			setStatus(_('\u542f\u52a8\u89c4\u5219\u96c6\u540c\u6b65\u5931\u8d25\u3002'), false);
+			setStatus(_('启动规则集同步失败。'), false);
 			return refreshAll();
 		}
 

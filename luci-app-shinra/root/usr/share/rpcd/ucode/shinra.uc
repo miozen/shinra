@@ -9,12 +9,13 @@ import { runtime_status, runtime_start, runtime_stop, runtime_restart } from 'sh
 import { generate_candidate, check_candidate } from 'shinra.generator';
 import { config_apply, config_rollback, runtime_healthcheck } from 'shinra.apply';
 import { dashboard_overview, dashboard_metrics } from 'shinra.dashboard';
+import { dashboard_source_get, dashboard_source_save, dashboard_status } from 'shinra.dashboard_config';
+import { api_status } from 'shinra.api_status';
 import { logs_get, last_error_get, diagnostics_get } from 'shinra.diagnostics';
 import { selector_list, selector_delay_test, selector_set } from 'shinra.control';
 import { connections_list } from 'shinra.connections';
 import { connectivity_probe } from 'shinra.connectivity';
 import { ruleset_inventory, ruleset_required_inventory, ruleset_policy_get, ruleset_policy_save, ruleset_download_required, ruleset_download_required_start, ruleset_download_required_status, ruleset_artifact_status, ruleset_download_one_start, ruleset_download_one_status } from 'shinra.ruleset';
-import { zashboard_source_get, zashboard_source_save, zashboard_status, zashboard_sync_remote, zashboard_update_check, zashboard_update_apply } from 'shinra.zashboard';
 import { notify_settings_get, notify_settings_save, notify_test_telegram } from 'shinra.notify';
 import { auto_task_status_get } from 'shinra.auto_task';
 import { scheduler_status, scheduler_tick } from 'shinra.core.scheduler';
@@ -329,6 +330,40 @@ const methods = {
 		}
 	},
 
+	dashboard_source_get: {
+		args: {},
+		call: function(req) {
+			let trace_id = gen_trace_id();
+			return gateway(trace_id, dashboard_source_get, req);
+		}
+	},
+
+	dashboard_source_save: {
+		args: {
+			content: ""
+		},
+		call: function(req) {
+			let trace_id = gen_trace_id();
+			return gateway(trace_id, dashboard_source_save, req);
+		}
+	},
+
+	dashboard_status: {
+		args: {},
+		call: function(req) {
+			let trace_id = gen_trace_id();
+			return gateway(trace_id, dashboard_status, req);
+		}
+	},
+
+	api_status: {
+		args: {},
+		call: function(req) {
+			let trace_id = gen_trace_id();
+			return gateway(trace_id, api_status, req);
+		}
+	},
+
 	selector_list: {
 		args: {},
 		call: function(req) {
@@ -459,56 +494,6 @@ const methods = {
 		call: function(req) {
 			let trace_id = gen_trace_id();
 			return gateway(trace_id, ruleset_download_one_status, req);
-		}
-	},
-
-	zashboard_source_get: {
-		args: {},
-		call: function(req) {
-			let trace_id = gen_trace_id();
-			return gateway(trace_id, zashboard_source_get, req);
-		}
-	},
-
-	zashboard_source_save: {
-		args: {
-			content: ""
-		},
-		call: function(req) {
-			let trace_id = gen_trace_id();
-			return gateway(trace_id, zashboard_source_save, req);
-		}
-	},
-
-	zashboard_status: {
-		args: {},
-		call: function(req) {
-			let trace_id = gen_trace_id();
-			return gateway(trace_id, zashboard_status, req);
-		}
-	},
-
-	zashboard_sync_remote: {
-		args: {},
-		call: function(req) {
-			let trace_id = gen_trace_id();
-			return gateway(trace_id, zashboard_sync_remote, req);
-		}
-	},
-
-	zashboard_update_check: {
-		args: {},
-		call: function(req) {
-			let trace_id = gen_trace_id();
-			return gateway(trace_id, zashboard_update_check, req);
-		}
-	},
-
-	zashboard_update_apply: {
-		args: {},
-		call: function(req) {
-			let trace_id = gen_trace_id();
-			return gateway(trace_id, zashboard_update_apply, req);
 		}
 	},
 

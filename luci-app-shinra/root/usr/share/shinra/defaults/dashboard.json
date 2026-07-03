@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "listen": "0.0.0.0",
+  "listen_port": 20123,
+  "secret": "",
+  "access_control_allow_origin": ["*"],
+  "access_control_allow_private_network": true,
+  "dashboard": {
+    "enabled": true,
+    "path": "/www/shinra/dashboard",
+    "download_url": "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip",
+    "update_interval": "1d"
+  },
+  "clash_api": {
+    "enabled": true,
+    "external_controller": "0.0.0.0:9090",
+    "secret": "",
+    "external_ui": "",
+    "default_mode": "rule"
+  }
+}

@@ -547,7 +547,7 @@ function result_message(task_type, result, status) {
 		message = append_section(message, "❌ 失败清单", rule_lines(data.failed, "🔸", true));
 		if (auto_apply_attempted(data))
 			return message + auto_apply_message(auto_apply);
-		return message + "\n\n♻️ 自动应用：无需执行\n" + ruleset_runtime_note(status, data);
+		return message + "\n\n♻️ 自动应用：未执行\n" + ruleset_runtime_note(status, data);
 	}
 
 	return (result.message || task_type + " " + status);
