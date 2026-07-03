@@ -32,6 +32,22 @@ function tabById(id) {
 	return tabs[0];
 }
 
+function queryTab() {
+	let match = window.location.search.match(/[?&]tab=([^&]+)/);
+	if (!match)
+		return tabs[0];
+	return tabById(decodeURIComponent(match[1]));
+}
+
+function setActiveTab(id, updateUrl) {
+	activeTab = tabById(id).id;
+
+	if (updateUrl && window.history && window.history.replaceState) {
+		let url = window.location.pathname + '?tab=' + encodeURIComponent(activeTab) + window.location.hash;
+		window.history.replaceState(null, '', url);
+	}
+}
+
 function loadTab(tab) {
 	return L.require(tab.module).then(function(mod) {
 		modules[tab.id] = mod;
@@ -72,7 +88,7 @@ function tabButton(tab) {
 		'style': 'min-width: 120px;',
 		'click': function(ev) {
 			ev.preventDefault();
-			activeTab = tab.id;
+			setActiveTab(tab.id, true);
 			redraw();
 		}
 	}, tab.label);
@@ -125,6 +141,7 @@ return view.extend({
 	},
 
 	render: function() {
+		setActiveTab(queryTab().id, false);
 		return renderPage();
 	},
 

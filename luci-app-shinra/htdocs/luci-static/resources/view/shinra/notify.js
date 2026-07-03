@@ -1,6 +1,7 @@
 'use strict';
 'require view';
 'require rpc';
+'require shinra.ui as shinraUi';
 
 const callNotifySettingsGet = rpc.declare({
 	object: 'shinra',
@@ -171,9 +172,8 @@ function renderPage() {
 				)
 			}, actionStatus),
 			E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem;' }, [
-				E('input', {
+				shinraUi.checkboxInput({
 					'id': 'shinra-notify-enabled',
-					'type': 'checkbox',
 					'checked': tg.enabled ? 'checked' : null
 				}),
 				E('span', {}, _('为自动资源任务启用 Telegram 通知'))
