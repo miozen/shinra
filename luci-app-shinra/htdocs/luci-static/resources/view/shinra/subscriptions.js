@@ -2,6 +2,7 @@
 'require view';
 'require rpc';
 'require shinra.time as shinraTime';
+'require shinra.ui as shinraUi';
 
 const callSubscriptionsGet = rpc.declare({
 	object: 'shinra',
@@ -380,18 +381,16 @@ function sourceMatrix(policy, summary) {
 							E('div', { 'style': 'font-size: 12px; color: #667; overflow-wrap: anywhere;' }, shortUrl(source.url)),
 							item.error ? E('div', { 'style': 'font-size: 12px; color: #991b1b; overflow-wrap: anywhere; margin-top: .25rem;' }, item.error) : E('div')
 						]),
-						E('td', { 'style': 'text-align: center;' }, E('input', {
+						E('td', { 'style': 'text-align: center;' }, shinraUi.checkboxInput({
 							'id': matrixId(index, 'enabled'),
-							'type': 'checkbox',
 							'checked': source.enabled !== false ? 'checked' : null,
 							'change': function() {
 								syncDraftFromMatrix();
 							}
 						}))
 					].concat(keys.map(function(region) {
-						return E('td', { 'style': 'text-align: center;' }, E('input', {
+						return E('td', { 'style': 'text-align: center;' }, shinraUi.checkboxInput({
 							'id': matrixId(index, 'region', region),
-							'type': 'checkbox',
 							'checked': source.allowed_regions.indexOf(region) >= 0 ? 'checked' : null,
 							'change': function() {
 								syncDraftFromMatrix();
@@ -493,17 +492,15 @@ function fetchSafetySettings(policy) {
 	return E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: .75rem;' }, [
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('局域网绕行')),
-			field(_('启用'), E('input', {
+			field(_('启用'), shinraUi.checkboxInput({
 				'id': 'shinra-fetch-bypass-enabled',
-				'type': 'checkbox',
 				'checked': bypass.enabled ? 'checked' : null,
 				'change': function() {
 					syncDraftFromMatrix();
 				}
 			})),
-			field(_('允许局域网'), E('input', {
+			field(_('允许局域网'), shinraUi.checkboxInput({
 				'id': 'shinra-fetch-bypass-allow-lan',
-				'type': 'checkbox',
 				'checked': bypass.allow_lan ? 'checked' : null,
 				'change': function() {
 					syncDraftFromMatrix();
@@ -582,9 +579,8 @@ function subscriptionUpdateSettings(policy) {
 	return E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: .75rem;' }, [
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('调度策略')),
-			field(_('自动刷新'), E('input', {
+			field(_('自动刷新'), shinraUi.checkboxInput({
 				'id': 'shinra-subscription-auto-update',
-				'type': 'checkbox',
 				'checked': update.auto_update ? 'checked' : null
 			})),
 			field(_('每日小时'), E('input', {
@@ -601,9 +597,8 @@ function subscriptionUpdateSettings(policy) {
 				E('option', { 'value': 'direct', 'selected': update.strategy === 'direct' ? 'selected' : null }, _('强制直连刷新')),
 				E('option', { 'value': 'proxy', 'selected': update.strategy === 'proxy' ? 'selected' : null }, _('强制代理刷新'))
 			])),
-			field(_('启动时运行'), E('input', {
+			field(_('启动时运行'), shinraUi.checkboxInput({
 				'id': 'shinra-subscription-run-on-boot',
-				'type': 'checkbox',
 				'checked': update.run_on_boot ? 'checked' : null
 			}))
 		]),
@@ -659,11 +654,10 @@ function sourceEditor(policy, index) {
 			]),
 			field(_('名称'), E('input', { 'id': 'shinra-editor-name', 'class': 'cbi-input-text', 'style': 'width: 100%;', 'value': source.name || '' })),
 			field(_('URL'), E('input', { 'id': 'shinra-editor-url', 'class': 'cbi-input-text', 'style': 'width: 100%;', 'value': source.url || '' })),
-			field(_('启用'), E('input', { 'id': 'shinra-editor-enabled', 'type': 'checkbox', 'checked': source.enabled !== false ? 'checked' : null })),
+			field(_('启用'), shinraUi.checkboxInput({ 'id': 'shinra-editor-enabled', 'checked': source.enabled !== false ? 'checked' : null })),
 			field(_('允许区域'), E('div', {}, keys.map(function(region) {
 				return E('label', { 'style': 'display: inline-flex; align-items: center; gap: .35rem; border: 1px solid #ddd; border-radius: 6px; padding: .35rem .55rem; margin-right: .45rem; margin-bottom: .45rem;' }, [
-					E('input', {
-						'type': 'checkbox',
+					shinraUi.checkboxInput({
 						'class': 'shinra-editor-region',
 						'value': region,
 						'checked': source.allowed_regions.indexOf(region) >= 0 ? 'checked' : null

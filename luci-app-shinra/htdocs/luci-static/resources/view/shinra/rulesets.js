@@ -2,6 +2,7 @@
 'require view';
 'require rpc';
 'require shinra.time as shinraTime';
+'require shinra.ui as shinraUi';
 
 const callRulesetInventory = rpc.declare({
 	object: 'shinra',
@@ -388,14 +389,14 @@ function localSyncSettings() {
 			]),
 			E('div', { 'style': 'display: flex; gap: .65rem; align-items: flex-end; flex-wrap: wrap;' }, [
 				E('label', { 'style': 'display: flex; gap: .5rem; align-items: center; min-height: 32px; margin-bottom: .15rem;' }, [
-					E('input', {
+					shinraUi.checkboxInput({
 						'id': 'shinra-ruleset-auto-update',
-						'type': 'checkbox',
 						'checked': policy.auto_update ? 'checked' : null,
 						'change': function(ev) {
+							const checked = !!ev.target.checked;
 							updatePolicyFromFields();
-							policy.auto_update = !!ev.target.checked;
-							redraw();
+							policy.auto_update = checked;
+							shinraUi.defer(redraw);
 						}
 					}),
 					E('span', {}, _('每日自动同步'))
@@ -413,14 +414,14 @@ function localSyncSettings() {
 					})
 				]) : '',
 				policy.auto_update ? E('label', { 'style': 'display: flex; gap: .5rem; align-items: center; min-height: 32px; margin-bottom: .15rem;' }, [
-					E('input', {
+					shinraUi.checkboxInput({
 						'id': 'shinra-ruleset-auto-apply-after-update',
-						'type': 'checkbox',
 						'checked': policy.auto_apply_after_update ? 'checked' : null,
 						'change': function(ev) {
+							const checked = !!ev.target.checked;
 							updatePolicyFromFields();
-							policy.auto_apply_after_update = !!ev.target.checked;
-							redraw();
+							policy.auto_apply_after_update = checked;
+							shinraUi.defer(redraw);
 						}
 					}),
 					E('span', {}, _('更新后自动应用（实验）'))

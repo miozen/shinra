@@ -1,6 +1,7 @@
 'use strict';
 'require view';
 'require rpc';
+'require shinra.ui as shinraUi';
 
 const callDashboardSourceGet = rpc.declare({
 	object: 'shinra',
@@ -278,7 +279,7 @@ function apiSettings() {
 		sectionTitle(_('Official API')),
 		sectionDescription(_('这些设置会生成 sing-box services 里的 API 服务。修改后需要重新生成并应用配置。')),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;' }, [
-			E('input', { 'id': 'shinra-dashboard-enabled', 'type': 'checkbox', 'checked': source.enabled ? 'checked' : null }),
+			shinraUi.checkboxInput({ 'id': 'shinra-dashboard-enabled', 'checked': source.enabled ? 'checked' : null }),
 			E('span', {}, _('启用 API 服务'))
 		]),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem;' }, [
@@ -300,7 +301,7 @@ function apiSettings() {
 			E('textarea', { 'id': 'shinra-dashboard-origins', 'class': 'cbi-input-textarea', 'style': 'width: 100%; min-height: 64px; box-sizing: border-box;' }, originText(source))
 		]),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-top: .6rem;' }, [
-			E('input', { 'id': 'shinra-dashboard-private-network', 'type': 'checkbox', 'checked': source.access_control_allow_private_network ? 'checked' : null }),
+			shinraUi.checkboxInput({ 'id': 'shinra-dashboard-private-network', 'checked': source.access_control_allow_private_network ? 'checked' : null }),
 			E('span', {}, _('允许私有网络访问'))
 		])
 	]);
@@ -313,7 +314,7 @@ function dashboardSettings() {
 		sectionTitle(_('Dashboard')),
 		sectionDescription(_('面板文件由 sing-box 根据下载地址自动下载、更新并托管。Shinra 只保存配置。')),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;' }, [
-			E('input', { 'id': 'shinra-dashboard-ui-enabled', 'type': 'checkbox', 'checked': dash.enabled ? 'checked' : null }),
+			shinraUi.checkboxInput({ 'id': 'shinra-dashboard-ui-enabled', 'checked': dash.enabled ? 'checked' : null }),
 			E('span', {}, _('启用 Dashboard'))
 		]),
 		E('label', { 'style': 'display: block; margin-top: .6rem;' }, [
@@ -339,7 +340,7 @@ function clashApiSettings() {
 		sectionTitle(_('Clash API')),
 		sectionDescription(_('这些设置用于生成 sing-box experimental.clash_api。Profile 已配置且不冲突时优先保留 Profile；端口冲突时使用这里的配置兜底。')),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;' }, [
-			E('input', { 'id': 'shinra-clash-api-enabled', 'type': 'checkbox', 'checked': clash.enabled ? 'checked' : null }),
+			shinraUi.checkboxInput({ 'id': 'shinra-clash-api-enabled', 'checked': clash.enabled ? 'checked' : null }),
 			E('span', {}, _('启用 Clash API'))
 		]),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem;' }, [

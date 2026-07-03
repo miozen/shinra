@@ -146,6 +146,13 @@ function valueText(value) {
 	return String(value);
 }
 
+function routerHostUrl(url) {
+	url = valueText(url);
+	if (url === '-')
+		return url;
+	return url.replace('://<router-host>', '://%s'.format(window.location.hostname || 'router-host'));
+}
+
 function sectionStyle() {
 	return 'border: 1px solid #dfe3e8; border-radius: 8px; padding: .75rem 1rem; margin: 0 0 .75rem; background: #fff;';
 }
@@ -169,15 +176,24 @@ function sectionDescription(text) {
 	return E('div', { 'style': mutedStyle() + ' margin: 0 0 .6rem;' }, text);
 }
 
-function cardStyle(accent) {
-	return 'border: 1px solid #dfe3e8; border-left: 4px solid %s; border-radius: 8px; padding: .65rem .75rem; background: #fff; box-sizing: border-box; min-height: 76px;'.format(accent || '#64748b');
+function cardStyle(accent, clickable) {
+	return 'border: 1px solid #dfe3e8; border-left: 4px solid %s; border-radius: 8px; padding: .65rem .75rem; background: #fff; box-sizing: border-box; min-height: 76px;%s'.format(
+		accent || '#64748b',
+		clickable ? ' display: block; color: inherit; text-decoration: none; cursor: pointer;' : ''
+	);
 }
 
-function card(title, value, detail, accent) {
-	return E('div', { 'style': cardStyle(accent) }, [
+function card(title, value, detail, accent, href) {
+	const detailContent = typeof detail === 'string' || detail == null ? valueText(detail) : detail;
+	const tag = href ? 'a' : 'div';
+	const attrs = { 'style': cardStyle(accent, !!href) };
+	if (href)
+		attrs.href = href;
+
+	return E(tag, attrs, [
 		E('div', { 'style': 'font-size: 11px; color: #667; text-transform: uppercase; letter-spacing: .04em;' }, title),
 		E('div', { 'style': 'font-size: 19px; font-weight: 700; margin-top: .2rem; line-height: 1.15; overflow-wrap: anywhere;' }, valueText(value)),
-		E('div', { 'style': 'margin-top: .35rem; color: #667; font-size: 12px; line-height: 1.3; overflow-wrap: anywhere;' }, valueText(detail))
+		E('div', { 'style': 'margin-top: .35rem; color: #667; font-size: 12px; line-height: 1.3; overflow-wrap: anywhere;' }, detailContent)
 	]);
 }
 
@@ -293,14 +309,6 @@ function schedulerPlanText(enabled, hour) {
 	return _('每日 %s:05 检查执行').format(hour < 10 ? '0' + hour : String(hour));
 }
 
-function actionLink(label, path, primary) {
-	return E('a', {
-		'class': 'btn cbi-button %s'.format(primary ? 'cbi-button-apply' : 'cbi-button-neutral'),
-		'href': L.url(path),
-		'style': 'margin-right: .5rem; margin-bottom: .5rem; color: #fff !important; text-decoration: none;'
-	}, label);
-}
-
 function operationButton(label, actionLabel, rpcCall, buttonClass, confirmText) {
 	return E('button', {
 		'class': 'btn cbi-button %s'.format(buttonClass || 'cbi-button-neutral'),
@@ -310,6 +318,10 @@ function operationButton(label, actionLabel, rpcCall, buttonClass, confirmText) 
 			return runAction(actionLabel, rpcCall, confirmText);
 		}
 	}, label);
+}
+
+function resourceHref(tab) {
+	return L.url('admin/services/shinra/resources') + '?tab=' + encodeURIComponent(tab);
 }
 
 function setActionStatus(text, ok) {
@@ -508,7 +520,20 @@ function resourceCards() {
 		rulesAutoApplyText ? ' | ' + rulesAutoApplyText : ''
 	);
 	const panelReady = panelSource.enabled == true && panelDashboard.enabled == true;
-	const panelDetail = _('%s | %s').format(panel.dashboard_url || '-', panelDashboard.path || '-');
+	const panelUrl = routerHostUrl(panel.dashboard_url);
+	const panelDetail = E('span', {}, [
+		panelUrl !== '-' ? E('a', {
+			'href': panelUrl,
+			'target': '_blank',
+			'rel': 'noopener noreferrer',
+			'style': 'color: #2563eb; text-decoration: underline;',
+			'click': function(ev) {
+				ev.stopPropagation();
+			}
+		}, panelUrl) : '-',
+		' | ',
+		panelDashboard.path || '-'
+	]);
 	const notifyEnabled = notifyTelegram.enabled == true;
 	const notifyStatus = notifyState.last_status || (notifyEnabled ? _('等待中') : _('已停用'));
 	const notifyResult = notifyState.last_attempt_at ? _('%s 于 %s').format(notifyState.last_sent ? _('已发送') : _('未发送'), shinraTime.formatMaybeTime(notifyState.last_attempt_at)) : (notifyEnabled ? _('未记录发送尝试') : _('Telegram 已停用'));
@@ -517,11 +542,11 @@ function resourceCards() {
 		notifyAccent = statusTone(notifyState.last_sent == true, !notifyState.last_attempt_at);
 
 	return E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .65rem;' }, [
-		card(_('模板'), profileOk ? _('就绪') : _('错误'), _('上次同步：%s | %s').format(profileSyncTime, profileSourceText), statusTone(profileOk)),
-		card(_('订阅'), nodeCount ? _('%d 个节点').format(nodeCount) : _('无节点'), _('上次刷新：%s | %s').format(snapshotTime, subAutoText), subScheduleWarning ? '#ea580c' : statusTone(sourceCount > 0 && nodeCount > 0, sourceCount > 0)),
-		card(_('规则集'), missingRules === 0 ? _('就绪') : _('需要处理'), rulesDetailText, rulesScheduleWarning ? '#ea580c' : statusTone(missingRules === 0 && requiredRules > 0, requiredRules > 0)),
-		card(_('面板'), panelReady ? _('已启用') : _('未启用'), panelDetail, statusTone(panelReady)),
-		card(_('Telegram'), notifyEnabled ? _('已启用') : _('已停用'), _('最近结果：%s | %s').format(notifyStatus, notifyResult), notifyAccent)
+		card(_('模板'), profileOk ? _('就绪') : _('错误'), _('上次同步：%s | %s').format(profileSyncTime, profileSourceText), statusTone(profileOk), resourceHref('profile')),
+		card(_('订阅'), nodeCount ? _('%d 个节点').format(nodeCount) : _('无节点'), _('上次刷新：%s | %s').format(snapshotTime, subAutoText), subScheduleWarning ? '#ea580c' : statusTone(sourceCount > 0 && nodeCount > 0, sourceCount > 0), resourceHref('subscriptions')),
+		card(_('规则集'), missingRules === 0 ? _('就绪') : _('需要处理'), rulesDetailText, rulesScheduleWarning ? '#ea580c' : statusTone(missingRules === 0 && requiredRules > 0, requiredRules > 0), resourceHref('rules')),
+		card(_('面板'), panelReady ? _('已启用') : _('未启用'), panelDetail, statusTone(panelReady), resourceHref('panel')),
+		card(_('Telegram'), notifyEnabled ? _('已启用') : _('已停用'), _('最近结果：%s | %s').format(notifyStatus, notifyResult), notifyAccent, resourceHref('notify'))
 	]);
 }
 
@@ -563,17 +588,6 @@ function operationButtons() {
 	]);
 }
 
-function entryLinks() {
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('快捷入口')),
-		E('div', { 'style': 'display: flex; flex-wrap: wrap;' }, [
-			actionLink(_('打开面板'), 'admin/services/shinra/panel', true),
-			actionLink(_('管理资源'), 'admin/services/shinra/resources'),
-			actionLink(_('网络诊断'), 'admin/services/shinra/diagnostics')
-		])
-	]);
-}
-
 function renderPage() {
 	const loadError = pageLoadError();
 
@@ -582,8 +596,7 @@ function renderPage() {
 		loadError ? E('div', { 'style': 'border: 1px solid #fecaca; border-radius: 8px; padding: .65rem; margin: 0 0 .75rem; background: #fef2f2; color: #991b1b;' }, loadError) : '',
 		runtimeStatusSection(),
 		resourceStatusSection(),
-		operationButtons(),
-		entryLinks()
+		operationButtons()
 	]);
 }
 
