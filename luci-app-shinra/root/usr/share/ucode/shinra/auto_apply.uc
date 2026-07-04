@@ -74,7 +74,7 @@ function allow(detail, freeze) {
 		dry_run: true,
 		stage: "dry_run_ready",
 		blocked_reason: "",
-		detail: detail || "Auto-apply would start in a later phase.",
+		detail: detail || "自动应用将在后续阶段开始。",
 		freeze: freeze || {
 			checked: false,
 			acquired: false,
@@ -176,7 +176,7 @@ function success_after_apply(freeze, candidate, runtime_apply, runtime_verify, r
 		dry_run: false,
 		stage: "stable_success",
 		blocked_reason: "",
-		detail: "Candidate generated, checked, applied, and Runtime stability verification passed.",
+		detail: "候选配置已生成、检查并应用，运行稳定性验证已通过。",
 		freeze: public_freeze(freeze),
 		candidate: candidate,
 		runtime_apply: runtime_apply,
@@ -256,7 +256,7 @@ function failed_after_verify(detail, freeze, candidate, runtime_apply, runtime_v
 		dry_run: false,
 		stage: "runtime_verify_timeout",
 		blocked_reason: "",
-		detail: detail || "Runtime did not stay healthy for the required stability window.",
+		detail: detail || "运行状态未能在要求的稳定窗口内保持健康。",
 		freeze: public_freeze(freeze),
 		candidate: candidate || {},
 		runtime_apply: runtime_apply || {},
@@ -265,7 +265,7 @@ function failed_after_verify(detail, freeze, candidate, runtime_apply, runtime_v
 }
 
 function rollback_runtime_and_rulesets(trace_id) {
-	state_rollback(trace_id, "Runtime verification failed; rollback started.", {});
+	state_rollback(trace_id, "运行验证失败，已开始回滚。", {});
 
 	let runtime_lock = lock_try("runtime", trace_id);
 	if (runtime_lock == null)
@@ -336,7 +336,7 @@ function failed_after_verify_rollback(detail, freeze, candidate, runtime_apply, 
 		dry_run: false,
 		stage: rollback && rollback.ok == true ? "rollback_success" : "rollback_degraded",
 		blocked_reason: "",
-		detail: detail || "Runtime stability verification failed; rollback was attempted.",
+		detail: detail || "运行稳定性验证失败，已尝试回滚。",
 		freeze: public_freeze(freeze),
 		candidate: candidate || {},
 		runtime_apply: runtime_apply || {},
@@ -355,15 +355,15 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 	let mode = string_field(ruleset_result, "mode");
 
 	if (!auto_apply_requested(req))
-		return deny_with_state(trace_id, "not_auto_task", "Auto-apply is limited to scheduled Rule Set updates.");
+		return deny_with_state(trace_id, "not_auto_task", "自动应用仅限计划任务触发的规则集更新。");
 	if (!bool_field(policy, "auto_apply_after_update"))
-		return deny_with_state(trace_id, "disabled", "ruleset.auto_apply_after_update is false.");
+		return deny_with_state(trace_id, "disabled", "规则集更新后的自动应用未启用。");
 	if (failed_count > 0)
-		return deny_with_state(trace_id, "ruleset_partial", "Rule Set update has failed items.");
+		return deny_with_state(trace_id, "ruleset_partial", "规则集更新存在失败项目。");
 	if (updated_count <= 0)
-		return deny_with_state(trace_id, "no_updates", "Rule Set update did not change any files.");
+		return deny_with_state(trace_id, "no_updates", "规则集更新未改变任何文件。");
 	if (mode != "local")
-		return deny_with_state(trace_id, "not_local_mode", "Auto-apply only applies local Rule Set updates.");
+		return deny_with_state(trace_id, "not_local_mode", "自动应用仅处理本地规则集更新。");
 
 	let freeze = acquire_freeze_window(trace_id);
 	if (!freeze.ok) {
@@ -374,7 +374,7 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 			dry_run: false,
 			stage: "decision",
 			blocked_reason: "freeze_busy",
-			detail: "Auto-apply freeze window is busy: " + freeze.blocked_resource,
+			detail: "自动应用冻结窗口正忙：" + freeze.blocked_resource,
 			freeze: public_freeze(freeze)
 		};
 		state_decision(trace_id, result.detail, {
@@ -385,18 +385,18 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 	}
 
 	try {
-		state_freeze(trace_id, "Auto-apply freeze window acquired.", {
+		state_freeze(trace_id, "已取得自动应用冻结窗口。", {
 			freeze: public_freeze(freeze)
 		});
 
-		state_candidate(trace_id, "Generating candidate config.", {
+		state_candidate(trace_id, "正在生成候选配置。", {
 			ruleset_result: ruleset_result
 		});
 		let generated = generate_candidate(trace_id, {});
 		if (!generated || generated.ok != true) {
 			let restored = restore_rulesets_safe(trace_id);
 			release_all(freeze.locks);
-			let result = failed_after_attempt("candidate_generate_failed", generated ? (generated.detail || generated.message || generated.code || "") : "generate_candidate failed", freeze, {
+			let result = failed_after_attempt("candidate_generate_failed", generated ? (generated.detail || generated.message || generated.code || "") : "生成候选配置失败", freeze, {
 				generated: generated || null,
 				checked: null
 			}, restored);
@@ -404,14 +404,14 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 			return result;
 		}
 
-		state_candidate(trace_id, "Checking candidate config.", {
+		state_candidate(trace_id, "正在检查候选配置。", {
 			generated: generated
 		});
 		let checked = check_candidate(trace_id, {});
 		if (!checked || checked.ok != true) {
 			let restored = restore_rulesets_safe(trace_id);
 			release_all(freeze.locks);
-			let result = failed_after_attempt("candidate_check_failed", checked ? (checked.detail || checked.message || checked.code || "") : "check_candidate failed", freeze, {
+			let result = failed_after_attempt("candidate_check_failed", checked ? (checked.detail || checked.message || checked.code || "") : "候选配置检查失败", freeze, {
 				generated: generated,
 				checked: checked || null
 			}, restored);
@@ -419,7 +419,7 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 			return result;
 		}
 
-		state_applying(trace_id, "Applying checked candidate to Runtime.", {
+		state_applying(trace_id, "正在将已检查的候选配置应用到运行时。", {
 			generated: generated,
 			checked: checked
 		});
@@ -427,7 +427,7 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 		if (!applied || applied.ok != true) {
 			let restored = restore_rulesets_safe(trace_id);
 			release_all(freeze.locks);
-			let result = failed_after_attempt("runtime_apply_failed", applied ? (applied.detail || applied.message || applied.code || "") : "config_apply failed", freeze, {
+			let result = failed_after_attempt("runtime_apply_failed", applied ? (applied.detail || applied.message || applied.code || "") : "应用配置失败", freeze, {
 				generated: generated,
 				checked: checked
 			}, restored);
@@ -435,14 +435,14 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 			return result;
 		}
 
-		state_verifying(trace_id, "Runtime apply completed; stability window verification started.", {
+		state_verifying(trace_id, "运行时应用完成，已开始稳定窗口验证。", {
 			runtime_apply: applied
 		});
 		let verified = verify_runtime_stable(trace_id);
 		if (!verified.ok) {
 			let rollback = rollback_runtime_and_rulesets(trace_id);
 			release_all(freeze.locks);
-			let result = failed_after_verify_rollback("Runtime did not pass the stability window; rollback was attempted.", freeze, {
+			let result = failed_after_verify_rollback("运行状态未通过稳定窗口验证，已尝试回滚。", freeze, {
 				generated: generated,
 				checked: checked
 			}, applied, verified, rollback);
@@ -456,7 +456,7 @@ function maybe_auto_apply_ruleset_update(trace_id, ruleset_result, req) {
 		let confirmed = confirm_rulesets_safe(trace_id);
 		if (int_field(confirmed, "failed_count") > 0) {
 			release_all(freeze.locks);
-			let result = failed_after_attempt("ruleset_confirm_failed", confirmed.error || "Rule Set transaction confirm failed", freeze, {
+			let result = failed_after_attempt("ruleset_confirm_failed", confirmed.error || "规则集事务确认失败", freeze, {
 				generated: generated,
 				checked: checked
 			}, confirmed);

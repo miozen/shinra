@@ -255,6 +255,24 @@ function result_data(result) {
 	return {};
 }
 
+function object_field(obj, key) {
+	if (type(obj) == "object" && obj != null && type(obj[key]) == "object" && obj[key] != null && type(obj[key]) != "array")
+		return obj[key];
+	return {};
+}
+
+function string_field(obj, key, fallback) {
+	if (type(obj) == "object" && obj != null && type(obj[key]) == "string")
+		return obj[key];
+	return fallback || "";
+}
+
+function int_field(obj, key) {
+	if (type(obj) == "object" && obj != null && obj[key] != null)
+		return int(obj[key]);
+	return 0;
+}
+
 function divider() {
 	return "━━━━━━━━━━━━━━━━━━";
 }
@@ -389,35 +407,6 @@ function auto_apply_status(auto_apply) {
 	return "";
 }
 
-function auto_apply_message(auto_apply) {
-	if (type(auto_apply) != "object" || auto_apply == null)
-		return "";
-
-	let stage = type(auto_apply.stage) == "string" ? auto_apply.stage : "-";
-	let detail = type(auto_apply.detail) == "string" && auto_apply.detail != "" ? auto_apply.detail : "";
-	let status = auto_apply_status(auto_apply);
-	let message = "\n\n♻️ 自动应用：" + auto_apply_status_text(auto_apply, status);
-	if (stage != "" && stage != "-")
-		message = message + "\n📍 执行阶段：" + stage;
-	if (detail != "")
-		message = message + "\n🧾 详情：" + detail;
-
-	if (type(auto_apply.runtime_verify) == "object" && auto_apply.runtime_verify != null) {
-		message = message +
-			"\n🛡️ 运行验证：" + (auto_apply.runtime_verify.ok == true ? "通过" : "失败") +
-			"，" + (auto_apply.runtime_verify.attempts || 0) + "/" + (auto_apply.runtime_verify.required_checks || 0);
-	}
-
-	if (type(auto_apply.rollback) == "object" && auto_apply.rollback != null && type(auto_apply.rollback) != "array") {
-		message = message +
-			"\n🛟 回滚状态：" + (auto_apply.rollback.stage || "-");
-		if (type(auto_apply.rollback.error) == "string" && auto_apply.rollback.error != "")
-			message = message + "\n🧾 回滚错误：" + auto_apply.rollback.error;
-	}
-
-	return message;
-}
-
 function auto_apply_status_text(auto_apply, status) {
 	if (status == "success")
 		return "成功";
@@ -428,6 +417,120 @@ function auto_apply_status_text(auto_apply, status) {
 	if (auto_apply.attempted == true)
 		return "已执行";
 	return "未执行";
+}
+
+function auto_apply_stage_text(stage) {
+	if (stage == "stable_success")
+		return "稳定运行验证成功";
+	if (stage == "rollback_success")
+		return "回滚成功";
+	if (stage == "rollback_degraded")
+		return "回滚后仍异常";
+	if (stage == "runtime_apply_failed")
+		return "应用运行配置失败";
+	if (stage == "candidate_check_failed")
+		return "候选配置检查失败";
+	if (stage == "candidate_generate_failed")
+		return "候选配置生成失败";
+	if (stage == "ruleset_confirm_failed")
+		return "规则集变更确认失败";
+	if (stage == "runtime_verify_timeout")
+		return "运行稳定性验证超时";
+	if (stage == "candidate_crashed")
+		return "候选配置处理异常";
+	if (stage == "decision")
+		return "决策阶段";
+	if (stage == "dry_run_ready")
+		return "预检查通过";
+	if (stage == "runtime_lock_busy")
+		return "运行时锁被占用";
+	if (stage == "runtime_backup_not_restored")
+		return "运行配置备份未恢复";
+	return stage || "-";
+}
+
+function auto_apply_detail_text(detail) {
+	if (detail == "Candidate generated, checked, applied, and Runtime stability verification passed.")
+		return "候选配置已生成并通过检查，已应用到运行时，且稳定性验证通过。";
+	if (detail == "Runtime did not stay healthy for the required stability window.")
+		return "运行时未在要求的稳定窗口内保持健康。";
+	if (detail == "Runtime did not pass the stability window; rollback was attempted.")
+		return "运行时未通过稳定性验证，已尝试回滚。";
+	if (detail == "Auto-apply would start in a later phase.")
+		return "自动应用将在后续阶段开始。";
+	if (detail == "Auto-apply is limited to scheduled Rule Set updates.")
+		return "自动应用仅用于定时规则集更新。";
+	if (detail == "ruleset.auto_apply_after_update is false.")
+		return "规则集更新后自动应用未启用。";
+	if (detail == "Rule Set update has failed items.")
+		return "规则集有失败项，跳过自动应用。";
+	if (detail == "Rule Set update did not change any files.")
+		return "规则集没有文件变化，无需自动应用。";
+	if (detail == "Auto-apply only applies local Rule Set updates.")
+		return "自动应用仅适用于本地规则集模式。";
+	if (index(detail, "Auto-apply freeze window is busy: ") == 0)
+		return "自动应用冻结窗口被占用：" + substr(detail, length("Auto-apply freeze window is busy: "));
+	if (detail == "Runtime verification failed; rollback started.")
+		return "运行时验证失败，已开始回滚。";
+	if (detail == "Runtime apply completed; stability window verification started.")
+		return "运行配置已应用，开始稳定性验证。";
+	if (detail == "Applying checked candidate to Runtime.")
+		return "正在将已检查的候选配置应用到运行时。";
+	if (detail == "Checking candidate config.")
+		return "正在检查候选配置。";
+	if (detail == "Generating candidate config.")
+		return "正在生成候选配置。";
+	if (detail == "Auto-apply freeze window acquired.")
+		return "已取得自动应用冻结窗口。";
+	if (detail == "generate_candidate failed")
+		return "生成候选配置失败。";
+	if (detail == "check_candidate failed")
+		return "检查候选配置失败。";
+	if (detail == "config_apply failed")
+		return "应用运行配置失败。";
+	if (detail == "Rule Set transaction confirm failed")
+		return "规则集变更确认失败。";
+	return detail || "";
+}
+
+function auto_apply_message(auto_apply) {
+	if (type(auto_apply) != "object" || auto_apply == null)
+		return "";
+
+	let stage = string_field(auto_apply, "stage", "-");
+	let detail = string_field(auto_apply, "detail", "");
+	let status = auto_apply_status(auto_apply);
+	let message = "\n\n♻️ 自动应用：" + auto_apply_status_text(auto_apply, status);
+	if (stage != "" && stage != "-")
+		message = message + "\n📍 执行阶段：" + auto_apply_stage_text(stage);
+	if (detail != "")
+		message = message + "\n🧾 详情：" + auto_apply_detail_text(detail);
+
+	let runtime_verify = object_field(auto_apply, "runtime_verify");
+	if (runtime_verify.ok != null || int_field(runtime_verify, "attempts") > 0 || int_field(runtime_verify, "required_checks") > 0) {
+		message = message +
+			"\n🛡️ 运行验证：" + (runtime_verify.ok == true ? "通过" : "失败") +
+			"，" + int_field(runtime_verify, "attempts") + "/" + int_field(runtime_verify, "required_checks");
+	}
+
+	let rollback = object_field(auto_apply, "rollback");
+	if (string_field(rollback, "stage", "") != "" || string_field(rollback, "error", "") != "") {
+		message = message +
+			"\n🛟 回滚状态：" + auto_apply_stage_text(string_field(rollback, "stage", "-"));
+		let rollback_error = string_field(rollback, "error", "");
+		if (rollback_error != "")
+			message = message + "\n🧾 回滚错误：" + auto_apply_detail_text(rollback_error);
+	}
+
+	return message;
+}
+
+function safe_auto_apply_message(auto_apply) {
+	try {
+		return auto_apply_message(auto_apply);
+	} catch (e) {
+		return "\n\n♻️ 自动应用：已执行\n🧾 通知详情生成失败：" + e;
+	}
 }
 
 function subscription_status_line(status, sections) {
@@ -479,17 +582,17 @@ function ruleset_status_line(status, data) {
 		return "❌ 规则集同步后应用失败";
 	if (status == "fail")
 		return "❌ 规则集同步失败";
-	if ((data.failed_count || 0) > 0)
+	if (int_field(data, "failed_count") > 0)
 		return "⚠️ 规则集部分同步失败";
-	if ((data.updated_count || 0) > 0)
+	if (int_field(data, "updated_count") > 0)
 		return "✅ 规则集同步完成";
 	return "✅ 规则集已是最新";
 }
 
 function ruleset_runtime_note(status, data) {
-	if ((data.failed_count || 0) > 0)
+	if (int_field(data, "failed_count") > 0)
 		return "🛡️ 运行说明：失败规则集未更新，已保留现有文件";
-	if ((data.updated_count || 0) > 0)
+	if (int_field(data, "updated_count") > 0)
 		return "🛡️ 运行说明：规则集文件已更新";
 	return "🛡️ 运行说明：规则集文件无变化";
 }
@@ -515,9 +618,36 @@ function result_status(task_type, result) {
 			if (status != "")
 				return status;
 		}
-		return (data.failed_count || 0) > 0 ? "partial" : "success";
+		return int_field(data, "failed_count") > 0 ? "partial" : "success";
 	}
 	return "success";
+}
+
+function fallback_result_message(task_type, result, status, err) {
+	let data = result_data(result);
+	let message = "⚠️ 通知详情生成失败\n" + divider() + "\n\n🧾 错误详情：" + err;
+
+	if (task_type == "ruleset.sync") {
+		message = message +
+			"\n\n📦 规则集结果：" +
+			"\n更新：" + int_field(data, "updated_count") +
+			"\n未变化：" + int_field(data, "unchanged_count") +
+			"\n失败：" + int_field(data, "failed_count");
+
+		let auto_apply = auto_apply_data(data);
+		if (auto_apply_attempted(data)) {
+			message = message +
+				"\n\n♻️ 自动应用：" + auto_apply_status_text(auto_apply, auto_apply_status(auto_apply)) +
+				"\n📍 执行阶段：" + auto_apply_stage_text(string_field(auto_apply, "stage", "-"));
+			let runtime_verify = object_field(auto_apply, "runtime_verify");
+			if (runtime_verify.ok != null || int_field(runtime_verify, "attempts") > 0 || int_field(runtime_verify, "required_checks") > 0)
+				message = message + "\n🛡️ 运行验证：" + (runtime_verify.ok == true ? "通过" : "失败");
+		} else {
+			message = message + "\n\n♻️ 自动应用：未执行";
+		}
+	}
+
+	return message;
 }
 
 function result_message(task_type, result, status) {
@@ -546,7 +676,7 @@ function result_message(task_type, result, status) {
 		message = append_section(message, "📝 更新清单", rule_lines(data.updated, "🔹", false));
 		message = append_section(message, "❌ 失败清单", rule_lines(data.failed, "🔸", true));
 		if (auto_apply_attempted(data))
-			return message + auto_apply_message(auto_apply);
+			return message + safe_auto_apply_message(auto_apply);
 		return message + "\n\n♻️ 自动应用：未执行\n" + ruleset_runtime_note(status, data);
 	}
 
@@ -559,7 +689,14 @@ function notify_result_best_effort(trace_id, task_type, result) {
 		let message = result_message(task_type, result, status);
 		return send_telegram(trace_id, task_type, status, message);
 	} catch (e) {
-		return null;
+		let status = "fail";
+		try {
+			status = result_status(task_type, result);
+		} catch (status_error) {
+			let ignored_status_error = "" + status_error;
+		}
+		let message = fallback_result_message(task_type, result, status, "" + e);
+		return send_telegram(trace_id, task_type, status, message);
 	}
 }
 

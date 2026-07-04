@@ -40,6 +40,12 @@ function endpoint_from_listen(listen, port) {
 	};
 }
 
+function endpoint_from_service(service) {
+	if (type(service) != "object" || service == null || type(service) == "array")
+		return { host: "", port: 0, valid: false };
+	return endpoint_from_listen(service.listen, service.listen_port);
+}
+
 function endpoint_from_controller(controller) {
 	if (type(controller) != "string" || controller == "")
 		return { host: "", port: 0, valid: false };
@@ -94,8 +100,88 @@ function dashboard_api_service(policy) {
 	return service;
 }
 
-function apply_clash_api_policy(profile, policy, api_service) {
-	let official_enabled = policy.enabled == true;
+function find_profile_api_service(profile) {
+	let result = {
+		found: false,
+		index: -1,
+		service: null,
+		endpoint: { host: "", port: 0, valid: false }
+	};
+
+	if (type(profile.services) != "array")
+		return result;
+
+	for (let i = 0; i < length(profile.services); i++) {
+		let service = profile.services[i];
+		if (type(service) != "object" || service == null || type(service) == "array")
+			continue;
+		if (service.type != "api")
+			continue;
+
+		if (!result.found || service.tag == "shinra-api") {
+			result.found = true;
+			result.index = i;
+			result.service = service;
+			result.endpoint = endpoint_from_service(service);
+		}
+
+		if (service.tag == "shinra-api")
+			return result;
+	}
+
+	return result;
+}
+
+function api_service_result_from_profile(found) {
+	let service = found.service || {};
+	return {
+		enabled: true,
+		inserted: false,
+		existing: true,
+		source: "profile",
+		tag: type(service.tag) == "string" && service.tag != "" ? service.tag : "api",
+		listen: found.endpoint.host,
+		listen_port: found.endpoint.port,
+		endpoint_valid: found.endpoint.valid,
+		secret_configured: type(service.secret) == "string" && service.secret != "",
+		profile_existing: true,
+		profile_conflict: false,
+		conflict_resolved: false
+	};
+}
+
+function api_service_result_from_dashboard(policy, found) {
+	return {
+		enabled: true,
+		inserted: found.found ? false : true,
+		existing: found.found ? true : false,
+		source: "dashboard",
+		tag: "shinra-api",
+		listen: policy.listen,
+		listen_port: policy.listen_port,
+		endpoint_valid: true,
+		secret_configured: policy.secret != "",
+		profile_existing: found.found,
+		profile_conflict: found.found,
+		conflict_resolved: found.found
+	};
+}
+
+function apply_official_api_choice(profile, policy, found, result) {
+	if (result.source != "dashboard")
+		return;
+
+	if (type(profile.services) != "array")
+		profile.services = [];
+
+	let service = dashboard_api_service(policy);
+	if (found.found && found.index >= 0)
+		profile.services[found.index] = service;
+	else
+		push(profile.services, service);
+}
+
+function evaluate_clash_api_policy(profile, policy, official_endpoint, mutate, api_service) {
 	let dashboard_enabled = type(policy.clash_api) == "object" &&
 		policy.clash_api != null &&
 		type(policy.clash_api) != "array" &&
@@ -103,7 +189,7 @@ function apply_clash_api_policy(profile, policy, api_service) {
 	let profile_has = has_clash_api(profile);
 	let profile_api = profile_has ? profile.experimental.clash_api : {};
 	let dashboard_api = managed_clash_api(policy);
-	let service_endpoint = official_enabled ? endpoint_from_listen(policy.listen, policy.listen_port) : { host: "", port: 0, valid: false };
+	let service_endpoint = official_endpoint;
 	let profile_endpoint = endpoint_from_controller(profile_api.external_controller);
 	let dashboard_endpoint = endpoint_from_controller(dashboard_api.external_controller);
 	let profile_conflict = profile_has && endpoints_conflict(service_endpoint, profile_endpoint);
@@ -125,41 +211,57 @@ function apply_clash_api_policy(profile, policy, api_service) {
 		result.source = "profile";
 		result.external_controller = profile_api.external_controller || "";
 		result.secret_configured = type(profile_api.secret) == "string" && profile_api.secret != "";
-		api_service.preserved_clash_api = true;
+		if (api_service != null)
+			api_service.preserved_clash_api = true;
 		return result;
 	}
 
 	if (dashboard_enabled && !dashboard_conflict) {
-		let experimental = ensure_object_field(profile, "experimental");
-		experimental.clash_api = dashboard_api;
+		if (mutate == true) {
+			let experimental = ensure_object_field(profile, "experimental");
+			experimental.clash_api = dashboard_api;
+		}
 		result.enabled = true;
 		result.source = "dashboard";
 		result.external_controller = dashboard_api.external_controller;
 		result.secret_configured = dashboard_api.secret != "";
 		result.conflict_resolved = profile_conflict;
-		api_service.preserved_clash_api = false;
+		if (api_service != null)
+			api_service.preserved_clash_api = false;
 		return result;
 	}
 
-	if (profile_conflict && dashboard_conflict)
-		die("CLASH_API_PORT_CONFLICT:Profile and Dashboard Clash API endpoints both conflict with official API service " + policy.listen + ":" + policy.listen_port);
-	if (profile_conflict && !dashboard_enabled)
-		die("CLASH_API_PORT_CONFLICT:Profile Clash API endpoint conflicts with official API service and Dashboard Clash API is disabled");
-	if (!profile_has && dashboard_conflict)
-		die("CLASH_API_PORT_CONFLICT:Dashboard Clash API endpoint conflicts with official API service " + policy.listen + ":" + policy.listen_port);
+	if (profile_conflict && dashboard_conflict) {
+		result.error = "Profile and Dashboard Clash API endpoints both conflict with official API service " + service_endpoint.host + ":" + service_endpoint.port;
+		return result;
+	}
+	if (profile_conflict && !dashboard_enabled) {
+		result.error = "Profile Clash API endpoint conflicts with official API service and Dashboard Clash API is disabled";
+		return result;
+	}
+	if (!profile_has && dashboard_conflict) {
+		result.error = "Dashboard Clash API endpoint conflicts with official API service " + service_endpoint.host + ":" + service_endpoint.port;
+		return result;
+	}
 
 	return result;
 }
 
 function apply_dashboard_api_service(profile) {
 	let policy = dashboard_policy();
+	let found = find_profile_api_service(profile);
 	let result = {
 		enabled: policy.enabled == true ? true : false,
 		inserted: false,
 		existing: false,
+		source: "none",
 		tag: "shinra-api",
 		listen: policy.listen,
 		listen_port: policy.listen_port,
+		endpoint_valid: true,
+		profile_existing: found.found,
+		profile_conflict: false,
+		conflict_resolved: false,
 		dashboard_enabled: type(policy.dashboard) == "object" && policy.dashboard != null && policy.dashboard.enabled == true ? true : false,
 		dashboard_path: type(policy.dashboard) == "object" && policy.dashboard != null ? policy.dashboard.path : "",
 		dashboard_download_url: type(policy.dashboard) == "object" && policy.dashboard != null ? policy.dashboard.download_url : "",
@@ -168,28 +270,43 @@ function apply_dashboard_api_service(profile) {
 		clash_api: null
 	};
 
-	result.clash_api = apply_clash_api_policy(profile, policy, result);
+	let choices = [];
+	if (found.found)
+		push(choices, {
+			api: api_service_result_from_profile(found),
+			endpoint: found.endpoint
+		});
+	if (policy.enabled == true)
+		push(choices, {
+			api: api_service_result_from_dashboard(policy, found),
+			endpoint: endpoint_from_listen(policy.listen, policy.listen_port)
+		});
+	if (!length(choices))
+		push(choices, {
+			api: result,
+			endpoint: { host: "", port: 0, valid: false }
+		});
 
-	if (!result.enabled)
-		return result;
-
-	if (type(profile.services) != "array")
-		profile.services = [];
-
-	let service = dashboard_api_service(policy);
-	for (let i = 0; i < length(profile.services); i++) {
-		let existing = profile.services[i];
-		if (type(existing) == "object" && existing != null && existing.tag == result.tag) {
-			profile.services[i] = service;
-			result.existing = true;
-			result.secret_configured = policy.secret != "";
-			return result;
+	let chosen = null;
+	let last_clash = null;
+	for (let choice in choices) {
+		let clash = evaluate_clash_api_policy(profile, policy, choice.endpoint, false, null);
+		last_clash = clash;
+		if (type(clash.error) != "string" || clash.error == "") {
+			chosen = choice;
+			break;
 		}
 	}
 
-	push(profile.services, service);
-	result.inserted = true;
-	result.secret_configured = policy.secret != "";
+	if (chosen == null)
+		die("CLASH_API_PORT_CONFLICT:" + (last_clash != null && type(last_clash.error) == "string" ? last_clash.error : "Clash API endpoint conflicts with official API service"));
+
+	let base = chosen.api;
+	for (let key in base)
+		result[key] = base[key];
+
+	result.clash_api = evaluate_clash_api_policy(profile, policy, chosen.endpoint, true, result);
+	apply_official_api_choice(profile, policy, found, result);
 	return result;
 }
 
