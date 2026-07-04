@@ -280,7 +280,7 @@ function apiSettings() {
 		sectionDescription(_('这些设置用于生成 sing-box services 里的 API 服务。Profile 已配置 Official API 且不冲突时优先保留 Profile；与 Clash API 端口冲突时使用这里的配置兜底。修改后需要重新生成并应用配置。')),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;' }, [
 			shinraUi.checkboxInput({ 'id': 'shinra-dashboard-enabled', 'checked': source.enabled ? 'checked' : null }),
-			E('span', {}, _('启用 API 服务'))
+			E('span', {}, _('启用 Official API'))
 		]),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem;' }, [
 			E('label', {}, [
