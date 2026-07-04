@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "url": "",
+  "fetch_strategy": "direct",
+  "repository": {
+    "type": "github",
+    "owner": "Zephyruso",
+    "repo": "zashboard",
+    "asset_pattern": "dist.zip",
+    "release_api_url": "https://api.github.com/repos/Zephyruso/zashboard/releases/latest",
+    "asset_download_base": "https://github.com/Zephyruso/zashboard/releases/download"
+  },
+  "installed": {
+    "version": "",
+    "updated_at": ""
+  },
+  "last_check": {
+    "version": "",
+    "asset_name": "",
+    "asset_url": "",
+    "download_url": "",
+    "checked_at": "",
+    "result": "",
+    "update_available": false
+  },
+  "panel_api": {
+    "enabled": true,
+    "external_controller": "0.0.0.0:20123",
+    "secret": "",
+    "allow_empty_secret": true
+  }
+}

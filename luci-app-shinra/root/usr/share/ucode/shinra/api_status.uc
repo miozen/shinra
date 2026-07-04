@@ -28,28 +28,54 @@ function dashboard_host(listen) {
 	return listen;
 }
 
-function dashboard_url(source) {
-	return "http://" + dashboard_host(source.listen) + ":" + source.listen_port + "/dashboard/";
+function dashboard_url_from_endpoint(listen, port) {
+	return "http://" + dashboard_host(listen) + ":" + port + "/dashboard/";
 }
 
-function api_url(source) {
-	return "http://" + dashboard_host(source.listen) + ":" + source.listen_port + "/";
+function api_url_from_endpoint(listen, port) {
+	return "http://" + dashboard_host(listen) + ":" + port + "/";
 }
 
-function runtime_has_official_api(config, source) {
+function empty_official_api() {
+	return {
+		configured: false,
+		source: "none",
+		tag: "",
+		listen: "",
+		listen_port: 0,
+		secret_configured: false,
+		dashboard_enabled: false
+	};
+}
+
+function runtime_official_api(config, source) {
+	let fallback = empty_official_api();
 	if (type(config.services) != "array")
-		return false;
+		return fallback;
 
 	for (let service in config.services) {
 		if (type(service) != "object" || service == null)
 			continue;
-		if (service.type == "api" && service.tag == "shinra-api")
-			return int(service.listen_port || 0) == int(source.listen_port || 0);
-		if (service.type == "api" && int(service.listen_port || 0) == int(source.listen_port || 0))
-			return true;
+		if (service.type != "api")
+			continue;
+
+		let data = {
+			configured: true,
+			source: service.tag == "shinra-api" ? "dashboard" : "profile",
+			tag: service.tag || "",
+			listen: type(service.listen) == "string" && service.listen != "" ? service.listen : "0.0.0.0",
+			listen_port: int(service.listen_port || 0),
+			secret_configured: type(service.secret) == "string" && service.secret != "",
+			dashboard_enabled: type(service.dashboard) == "object" && service.dashboard != null && service.dashboard.enabled == true
+		};
+
+		if (service.tag == "shinra-api")
+			return data;
+		if (!fallback.configured)
+			fallback = data;
 	}
 
-	return false;
+	return fallback;
 }
 
 function runtime_clash_api(config) {
@@ -61,8 +87,11 @@ function runtime_clash_api(config) {
 }
 
 function official_status(source, config, running) {
-	let configured = source.enabled == true;
-	let runtime_configured = runtime_has_official_api(config, source);
+	let runtime_api = runtime_official_api(config, source);
+	let runtime_configured = runtime_api.configured == true;
+	let configured = source.enabled == true || runtime_configured;
+	let listen = runtime_configured ? runtime_api.listen : source.listen;
+	let listen_port = runtime_configured ? runtime_api.listen_port : source.listen_port;
 	let available = configured && runtime_configured && running;
 	let reason = "ok";
 
@@ -76,14 +105,17 @@ function official_status(source, config, running) {
 	return {
 		configured: configured,
 		runtime_configured: runtime_configured,
+		source_enabled: source.enabled == true,
+		source: runtime_configured ? runtime_api.source : (source.enabled == true ? "dashboard" : "none"),
+		tag: runtime_configured ? runtime_api.tag : "shinra-api",
 		running: running,
 		available: available,
-		listen: source.listen,
-		listen_port: source.listen_port,
-		api_url: api_url(source),
-		dashboard_url: dashboard_url(source),
-		dashboard_enabled: type(source.dashboard) == "object" && source.dashboard != null && source.dashboard.enabled == true,
-		secret_configured: source.secret != "",
+		listen: listen,
+		listen_port: listen_port,
+		api_url: api_url_from_endpoint(listen, listen_port),
+		dashboard_url: dashboard_url_from_endpoint(listen, listen_port),
+		dashboard_enabled: runtime_configured ? runtime_api.dashboard_enabled : (type(source.dashboard) == "object" && source.dashboard != null && source.dashboard.enabled == true),
+		secret_configured: runtime_configured ? runtime_api.secret_configured : source.secret != "",
 		reason: reason
 	};
 }

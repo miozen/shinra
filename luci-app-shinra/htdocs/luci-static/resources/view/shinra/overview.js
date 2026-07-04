@@ -121,6 +121,71 @@ let pageResults = {};
 let actionStatus = '';
 let actionStatusOk = true;
 
+function injectOverviewMotionStyles() {
+	if (document.getElementById('shinra-overview-motion-style'))
+		return;
+
+	const style = document.createElement('style');
+	style.id = 'shinra-overview-motion-style';
+	style.textContent = [
+		'.shinra-overview-card {',
+		'  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, filter .16s ease;',
+		'  will-change: transform;',
+		'}',
+		'.shinra-overview-card:hover {',
+		'  transform: translateY(-2px);',
+		'  border-color: #cbd5e1;',
+		'  box-shadow: 0 10px 22px rgba(15, 23, 42, .08);',
+		'  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);',
+		'}',
+		'.shinra-overview-card:active {',
+		'  transform: translateY(0);',
+		'  box-shadow: 0 4px 10px rgba(15, 23, 42, .06);',
+		'}',
+		'.shinra-overview-card-clickable:focus-visible, .shinra-overview-action-button:focus-visible, .shinra-overview-card-action:focus-visible {',
+		'  outline: 2px solid #5b6ee1;',
+		'  outline-offset: 2px;',
+		'}',
+		'.shinra-overview-card-action {',
+		'  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, color .16s ease;',
+		'}',
+		'.shinra-overview-card-action:hover {',
+		'  transform: translateY(-1px);',
+		'  border-color: #bfdbfe;',
+		'  background: #eff6ff;',
+		'  color: #1d4ed8;',
+		'  box-shadow: 0 6px 14px rgba(37, 99, 235, .12);',
+		'}',
+		'.shinra-overview-card-action:active {',
+		'  transform: translateY(0);',
+		'  box-shadow: none;',
+		'}',
+		'.shinra-overview-action-button {',
+		'  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;',
+		'}',
+		'.shinra-overview-action-button:hover {',
+		'  transform: translateY(-2px);',
+		'  box-shadow: 0 8px 18px rgba(15, 23, 42, .14);',
+		'  filter: brightness(1.03);',
+		'}',
+		'.shinra-overview-action-button:active {',
+		'  transform: translateY(0);',
+		'  box-shadow: 0 3px 8px rgba(15, 23, 42, .10);',
+		'}',
+		'@media (prefers-reduced-motion: reduce) {',
+		'  .shinra-overview-card, .shinra-overview-card-action, .shinra-overview-action-button {',
+		'    transition: none;',
+		'    will-change: auto;',
+		'  }',
+		'  .shinra-overview-card:hover, .shinra-overview-card:active, .shinra-overview-card-action:hover, .shinra-overview-card-action:active, .shinra-overview-action-button:hover, .shinra-overview-action-button:active {',
+		'    transform: none;',
+		'  }',
+		'}'
+	].join('\n');
+
+	document.head.appendChild(style);
+}
+
 function dataOf(result) {
 	if (result && result.ok && result.data)
 		return result.data;
@@ -183,18 +248,46 @@ function cardStyle(accent, clickable) {
 	);
 }
 
-function card(title, value, detail, accent, href) {
-	const detailContent = typeof detail === 'string' || detail == null ? valueText(detail) : detail;
-	const tag = href ? 'a' : 'div';
-	const attrs = { 'style': cardStyle(accent, !!href) };
-	if (href)
-		attrs.href = href;
+function externalLinkIcon() {
+	const icon = E('span', { 'style': 'display: flex; align-items: center; justify-content: center;' });
+	icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/></svg>';
+	return icon;
+}
 
-	return E(tag, attrs, [
+function card(title, value, detail, accent, href, action) {
+	const detailContent = typeof detail === 'string' || detail == null ? valueText(detail) : detail;
+	const tag = href && !action ? 'a' : 'div';
+	const attrs = {
+		'class': 'shinra-overview-card%s'.format(href ? ' shinra-overview-card-clickable' : ''),
+		'style': cardStyle(accent, !!href) + (action ? ' position: relative; padding-right: 2.6rem;' : '')
+	};
+	if (href)
+		if (action) {
+			attrs.role = 'link';
+			attrs.tabindex = '0';
+			attrs.click = function(ev) {
+				window.location.href = href;
+			};
+			attrs.keydown = function(ev) {
+				if (ev.key === 'Enter' || ev.key === ' ') {
+					ev.preventDefault();
+					window.location.href = href;
+				}
+			};
+		} else {
+			attrs.href = href;
+		}
+
+	const children = [
 		E('div', { 'style': 'font-size: 11px; color: #667; text-transform: uppercase; letter-spacing: .04em;' }, title),
 		E('div', { 'style': 'font-size: 19px; font-weight: 700; margin-top: .2rem; line-height: 1.15; overflow-wrap: anywhere;' }, valueText(value)),
 		E('div', { 'style': 'margin-top: .35rem; color: #667; font-size: 12px; line-height: 1.3; overflow-wrap: anywhere;' }, detailContent)
-	]);
+	];
+
+	if (action)
+		children.push(action);
+
+	return E(tag, attrs, children);
 }
 
 function statusTone(ok, warning) {
@@ -311,7 +404,7 @@ function schedulerPlanText(enabled, hour) {
 
 function operationButton(label, actionLabel, rpcCall, buttonClass, confirmText) {
 	return E('button', {
-		'class': 'btn cbi-button %s'.format(buttonClass || 'cbi-button-neutral'),
+		'class': 'btn cbi-button shinra-overview-action-button %s'.format(buttonClass || 'cbi-button-neutral'),
 		'style': 'min-width: 5.5rem; padding-left: 1rem; padding-right: 1rem;',
 		'click': function(ev) {
 			ev.preventDefault();
@@ -521,19 +614,21 @@ function resourceCards() {
 	);
 	const panelReady = panelSource.enabled == true && panelDashboard.enabled == true;
 	const panelUrl = routerHostUrl(panel.dashboard_url);
-	const panelDetail = E('span', {}, [
-		panelUrl !== '-' ? E('a', {
+	const panelDetail = _('%s | %s').format(panelUrl !== '-' ? _('Dashboard 已托管') : _('Dashboard 地址未知'), panelDashboard.path || '-');
+	const panelAction = panelUrl !== '-' ? E('a', {
+			'class': 'shinra-overview-card-action',
 			'href': panelUrl,
 			'target': '_blank',
 			'rel': 'noopener noreferrer',
-			'style': 'color: #2563eb; text-decoration: underline;',
+			'title': _('打开 Dashboard'),
+			'aria-label': _('打开 Dashboard'),
+			'style': 'position: absolute; top: .55rem; right: .6rem; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; border: 1px solid #dfe3e8; background: #f8fafc; color: #334155; text-decoration: none;',
 			'click': function(ev) {
+				ev.preventDefault();
 				ev.stopPropagation();
+				window.open(panelUrl, '_blank', 'noopener');
 			}
-		}, panelUrl) : '-',
-		' | ',
-		panelDashboard.path || '-'
-	]);
+		}, externalLinkIcon()) : null;
 	const notifyEnabled = notifyTelegram.enabled == true;
 	const notifyStatus = notifyState.last_status || (notifyEnabled ? _('等待中') : _('已停用'));
 	const notifyResult = notifyState.last_attempt_at ? _('%s 于 %s').format(notifyState.last_sent ? _('已发送') : _('未发送'), shinraTime.formatMaybeTime(notifyState.last_attempt_at)) : (notifyEnabled ? _('未记录发送尝试') : _('Telegram 已停用'));
@@ -545,7 +640,7 @@ function resourceCards() {
 		card(_('模板'), profileOk ? _('就绪') : _('错误'), _('上次同步：%s | %s').format(profileSyncTime, profileSourceText), statusTone(profileOk), resourceHref('profile')),
 		card(_('订阅'), nodeCount ? _('%d 个节点').format(nodeCount) : _('无节点'), _('上次刷新：%s | %s').format(snapshotTime, subAutoText), subScheduleWarning ? '#ea580c' : statusTone(sourceCount > 0 && nodeCount > 0, sourceCount > 0), resourceHref('subscriptions')),
 		card(_('规则集'), missingRules === 0 ? _('就绪') : _('需要处理'), rulesDetailText, rulesScheduleWarning ? '#ea580c' : statusTone(missingRules === 0 && requiredRules > 0, requiredRules > 0), resourceHref('rules')),
-		card(_('面板'), panelReady ? _('已启用') : _('未启用'), panelDetail, statusTone(panelReady), resourceHref('panel')),
+		card(_('面板'), panelReady ? _('已启用') : _('未启用'), panelDetail, statusTone(panelReady), resourceHref('panel'), panelAction),
 		card(_('Telegram'), notifyEnabled ? _('已启用') : _('已停用'), _('最近结果：%s | %s').format(notifyStatus, notifyResult), notifyAccent, resourceHref('notify'))
 	]);
 }
@@ -590,6 +685,7 @@ function operationButtons() {
 
 function renderPage() {
 	const loadError = pageLoadError();
+	injectOverviewMotionStyles();
 
 	return E('div', { 'id': 'shinra-overview-root', 'class': 'cbi-map' }, [
 		pageHeader(_('Shinra'), _('概览是控制面首页。运行时策略组交互由 Dashboard 处理。')),
