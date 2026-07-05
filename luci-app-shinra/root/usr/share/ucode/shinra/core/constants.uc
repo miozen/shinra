@@ -13,8 +13,6 @@ const PATH = {
 	NOTIFY_STATE: "/var/run/shinra/notify.state.json",
 	DASHBOARD_SOURCE: "/etc/shinra/dashboard.json",
 	DASHBOARD_DIR: "/www/shinra/dashboard",
-	ZASHBOARD_SOURCE: "/etc/shinra/zashboard-source.json",
-	ZASHBOARD_DIR: "/www/shinra/zashboard",
 	SUBSCRIPTIONS: "/etc/shinra/subscriptions.json",
 	NODE_SNAPSHOT: "/etc/shinra/node-snapshot.json",
 	RUNTIME_CONFIG: "/etc/shinra/runtime/config.json",
