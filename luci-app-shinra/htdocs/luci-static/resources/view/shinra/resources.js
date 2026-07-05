@@ -1,5 +1,7 @@
 'use strict';
 'require view';
+'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 let activeTab = 'profile';
 let modules = {};
@@ -12,17 +14,6 @@ const tabs = [
 	{ id: 'panel', label: _('面板'), module: 'view.shinra.panel_settings' },
 	{ id: 'notify', label: _('通知'), module: 'view.shinra.notify' }
 ];
-
-function sectionStyle() {
-	return 'border: 1px solid #dfe3e8; border-radius: 8px; padding: .75rem 1rem; margin: 0 0 .75rem; background: #fff;';
-}
-
-function pageHeader(title, description) {
-	return E('div', { 'style': sectionStyle() }, [
-		E('h2', { 'style': 'margin: 0 0 .35rem; line-height: 1.25;' }, title),
-		E('p', { 'style': 'margin: 0; color: #667; line-height: 1.35; overflow-wrap: anywhere;' }, description)
-	]);
-}
 
 function tabById(id) {
 	for (let i = 0; i < tabs.length; i++) {
@@ -84,7 +75,7 @@ function tabButton(tab) {
 
 	return E('button', {
 		'type': 'button',
-		'class': 'btn cbi-button %s'.format(active ? 'cbi-button-apply' : 'cbi-button-neutral'),
+		'class': shinraMotion.buttonClass('btn cbi-button %s'.format(active ? 'cbi-button-apply' : 'cbi-button-neutral')),
 		'style': 'min-width: 120px;',
 		'click': function(ev) {
 			ev.preventDefault();
@@ -106,14 +97,14 @@ function renderActiveTab() {
 	const data = loaded[tab.id];
 
 	if (data && data.error) {
-		return E('div', { 'style': sectionStyle() }, [
+		return E('div', { 'style': shinraUi.sectionStyle() }, [
 			E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, tab.label),
 			E('p', { 'style': 'margin: 0; color: #b91c1c; line-height: 1.35; overflow-wrap: anywhere;' }, data.error)
 		]);
 	}
 
 	if (!mod || typeof mod.render !== 'function') {
-		return E('div', { 'style': sectionStyle() }, [
+		return E('div', { 'style': shinraUi.sectionStyle() }, [
 			E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, tab.label),
 			E('p', { 'style': 'margin: 0; color: #667; line-height: 1.35;' }, _('该资源页暂不可用。'))
 		]);
@@ -125,8 +116,10 @@ function renderActiveTab() {
 }
 
 function renderPage() {
+	shinraMotion.inject();
+
 	return E('div', { 'id': 'shinra-resources-root', 'class': 'cbi-map' }, [
-		pageHeader(
+		shinraUi.pageHeader(
 			_('资源管理'),
 			_('管理模板、订阅源、规则集、面板和自动任务通知。保存只写入设置；刷新、同步和更新可能作为后台任务运行。')
 		),

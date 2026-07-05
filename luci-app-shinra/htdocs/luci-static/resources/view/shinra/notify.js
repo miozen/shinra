@@ -2,6 +2,7 @@
 'require view';
 'require rpc';
 'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 const callNotifySettingsGet = rpc.declare({
 	object: 'shinra',
@@ -29,15 +30,7 @@ let actionStatusOk = true;
 function setStatus(message, ok) {
 	actionStatus = message || '';
 	actionStatusOk = ok !== false;
-	const node = document.getElementById('shinra-notify-status');
-	if (!node)
-		return;
-
-	node.textContent = actionStatus;
-	node.style.display = actionStatus ? 'block' : 'none';
-	node.style.borderColor = actionStatusOk ? '#bbf7d0' : '#fecaca';
-	node.style.background = actionStatusOk ? '#f0fdf4' : '#fef2f2';
-	node.style.color = actionStatusOk ? '#166534' : '#991b1b';
+	shinraUi.paintStatus('shinra-notify-status', actionStatus, actionStatusOk ? 'ok' : 'error');
 }
 
 function dataOf(result) {
@@ -65,31 +58,8 @@ function notifySettings() {
 	};
 }
 
-function sectionStyle() {
-	return 'border: 1px solid #dfe3e8; border-radius: 8px; padding: .75rem 1rem; margin: 0 0 .75rem; background: #fff;';
-}
-
-function mutedStyle() {
-	return 'color: #667; line-height: 1.35; overflow-wrap: anywhere;';
-}
-
-function pageHeader(title, description) {
-	return E('div', { 'style': sectionStyle() }, [
-		E('h2', { 'style': 'margin: 0 0 .35rem; line-height: 1.25;' }, title),
-		E('p', { 'style': mutedStyle() + ' margin: 0;' }, description)
-	]);
-}
-
-function sectionTitle(title) {
-	return E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, title);
-}
-
 function field(label, input, help) {
-	return E('label', { 'style': 'display: block; margin-bottom: .75rem;' }, [
-		E('div', { 'style': 'font-size: 12px; color: #667; font-weight: 700; margin-bottom: .25rem;' }, label),
-		input,
-		help ? E('div', { 'style': 'font-size: 12px; color: #667; margin-top: .25rem;' }, help) : ''
-	]);
+	return shinraUi.formField(label, input, help);
 }
 
 function settingsFromInputs() {
@@ -157,20 +127,13 @@ function testTelegram() {
 function renderPage() {
 	const settings = notifySettings();
 	const tg = settings.telegram;
+	shinraMotion.inject();
 
 	return E('div', { 'id': 'shinra-notify-root', 'class': 'cbi-map' }, [
-		pageHeader(_('通知'), _('Telegram 通知仅用于无人值守的自动资源更新，例如订阅刷新和规则集同步失败。手工操作不会发送通知。')),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('Telegram')),
-			E('div', {
-				'id': 'shinra-notify-status',
-				'style': 'display: %s; border: 1px solid %s; border-radius: 8px; padding: .65rem; margin-bottom: .75rem; background: %s; color: %s;'.format(
-					actionStatus ? 'block' : 'none',
-					actionStatusOk ? '#bbf7d0' : '#fecaca',
-					actionStatusOk ? '#f0fdf4' : '#fef2f2',
-					actionStatusOk ? '#166534' : '#991b1b'
-				)
-			}, actionStatus),
+		shinraUi.pageHeader(_('通知'), _('Telegram 通知仅用于无人值守的自动资源更新，例如订阅刷新和规则集同步失败。手工操作不会发送通知。')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('Telegram')),
+			shinraUi.statusBox('shinra-notify-status', actionStatus, actionStatusOk ? 'ok' : 'error', { margin: '0 0 .75rem' }),
 			E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem;' }, [
 				shinraUi.checkboxInput({
 					'id': 'shinra-notify-enabled',
@@ -222,8 +185,8 @@ function renderPage() {
 				}), _('单位：秒。'))
 			]),
 			E('div', { 'style': 'display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem;' }, [
-				E('button', { 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return saveSettings(); } }, _('保存通知设置')),
-				E('button', { 'class': 'btn cbi-button cbi-button-apply', 'click': function(ev) { ev.preventDefault(); return testTelegram(); } }, _('保存并发送测试'))
+				E('button', { 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-save'), 'click': function(ev) { ev.preventDefault(); return saveSettings(); } }, _('保存通知设置')),
+				E('button', { 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-apply'), 'click': function(ev) { ev.preventDefault(); return testTelegram(); } }, _('保存并发送测试'))
 			])
 		])
 	]);

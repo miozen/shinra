@@ -3,6 +3,7 @@
 'require rpc';
 'require shinra.time as shinraTime';
 'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 const callRulesetInventory = rpc.declare({
 	object: 'shinra',
@@ -179,50 +180,16 @@ function fieldLabel(text) {
 	return E('div', { 'style': 'font-size: 12px; color: #667; font-weight: 700; margin: 0 0 .25rem; line-height: 1.25;' }, text);
 }
 
-function statusPill(text, level) {
-	let color = '#475569';
-	let bg = '#f1f5f9';
-
-	if (level === 'ok') {
-		color = '#166534';
-		bg = '#dcfce7';
-	} else if (level === 'warning') {
-		color = '#92400e';
-		bg = '#fef3c7';
-	} else if (level === 'error') {
-		color = '#991b1b';
-		bg = '#fee2e2';
-	}
-
-	return E('span', {
-		'style': 'display: inline-flex; align-items: center; min-height: 22px; padding: 0 .55rem; border-radius: 999px; font-size: 12px; font-weight: 700; color: %s; background: %s; white-space: nowrap;'.format(color, bg)
-	}, text);
-}
-
 function setStatus(text, ok) {
 	actionStatus = text || '';
 	actionStatusOk = ok !== false;
-	const node = document.getElementById('shinra-ruleset-action-status');
-	if (!node)
-		return;
-
-	node.textContent = actionStatus;
-	node.style.display = actionStatus ? 'block' : 'none';
-	node.style.borderColor = actionStatusOk ? '#bbf7d0' : '#fecaca';
-	node.style.background = actionStatusOk ? '#f0fdf4' : '#fef2f2';
-	node.style.color = actionStatusOk ? '#166534' : '#991b1b';
+	shinraUi.paintStatus('shinra-ruleset-action-status', actionStatus, actionStatusOk ? 'ok' : 'error');
 }
 
 function inlineActionStatus() {
-	return E('div', {
-		'id': 'shinra-ruleset-action-status',
-		'style': 'display: %s; border: 1px solid %s; border-radius: 8px; padding: .65rem; margin-top: .75rem; background: %s; color: %s; overflow-wrap: anywhere;'.format(
-			actionStatus ? 'block' : 'none',
-			actionStatusOk ? '#bbf7d0' : '#fecaca',
-			actionStatusOk ? '#f0fdf4' : '#fef2f2',
-			actionStatusOk ? '#166534' : '#991b1b'
-		)
-	}, actionStatus);
+	return shinraUi.statusBox('shinra-ruleset-action-status', actionStatus, actionStatusOk ? 'ok' : 'error', {
+		margin: '.75rem 0 0'
+	});
 }
 
 function notifyFailure(result) {
@@ -342,8 +309,8 @@ function modeSettings() {
 					E('option', { 'value': 'local', 'selected': policy.mode === 'local' ? 'selected' : null }, _('本地模式'))
 				])
 			]),
-			E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return savePolicy(); } }, _('保存设置')),
-			policy.mode === 'local' ? E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-apply', 'click': function(ev) { ev.preventDefault(); return syncRulesets(); } }, _('同步所需规则集')) : ''
+			E('button', { 'type': 'button', 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-save'), 'click': function(ev) { ev.preventDefault(); return savePolicy(); } }, _('保存设置')),
+			policy.mode === 'local' ? E('button', { 'type': 'button', 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-apply'), 'click': function(ev) { ev.preventDefault(); return syncRulesets(); } }, _('同步所需规则集')) : ''
 		]),
 		E('div', { 'style': mutedStyle() }, modeHelpText()),
 		inlineActionStatus()
@@ -463,10 +430,10 @@ function artifactStatusPanel() {
 	return E('div', { 'style': sectionStyle() }, [
 		sectionTitle(_('本地规则集保护')),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .65rem;' }, [
-			statBox(_('等待运行验证'), state.pending ? _('是') : _('否')),
-			statBox(_('待验证文件'), changed),
-			statBox(_('已确认文件'), lastGoodCount),
-			statBox(_('事务状态'), state.pending_status || '-')
+			shinraUi.statCard(_('等待运行验证'), state.pending ? _('是') : _('否'), { 'class': shinraMotion.cardClass(), valueStyle: 'font-size: 22px;' }),
+			shinraUi.statCard(_('待验证文件'), changed, { 'class': shinraMotion.cardClass(), valueStyle: 'font-size: 22px;' }),
+			shinraUi.statCard(_('已确认文件'), lastGoodCount, { 'class': shinraMotion.cardClass(), valueStyle: 'font-size: 22px;' }),
+			shinraUi.statCard(_('事务状态'), state.pending_status || '-', { 'class': shinraMotion.cardClass(), valueStyle: 'font-size: 22px;' })
 		]),
 		artifactNotice(state),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .65rem; margin-top: .75rem; color: #667; overflow-wrap: anywhere;' }, [
@@ -492,23 +459,16 @@ function timeText(value) {
 	return valueText(value);
 }
 
-function statBox(label, value) {
-	return E('div', { 'style': 'border: 1px solid #e5e7eb; border-radius: 8px; padding: .65rem; background: #f8fafc;' }, [
-		E('div', { 'style': 'font-size: 12px; color: #667; font-weight: 700;' }, label),
-		E('div', { 'style': 'font-size: 22px; font-weight: 800; margin-top: .25rem;' }, valueText(value))
-	]);
-}
-
 function requiredInventory() {
 	return inventories.required && typeof inventories.required === 'object' ? inventories.required : {};
 }
 
 function rulesetStatus(entry) {
 	if (!entry || entry.status === 'missing')
-		return statusPill(_('缺失'), 'error');
+		return shinraUi.pill(_('缺失'), 'error');
 	if (entry.status === 'extra')
-		return statusPill(_('未使用'), 'warning');
-	return statusPill(_('已就绪'), 'ok');
+		return shinraUi.pill(_('未使用'), 'warning');
+	return shinraUi.pill(_('已就绪'), 'ok');
 }
 
 function sourceText(entry) {
@@ -544,7 +504,7 @@ function isPendingRuleset(tag) {
 
 function rowStatus(entry) {
 	if (entry && isPendingRuleset(entry.tag))
-		return statusPill(_('待验证'), 'warning');
+		return shinraUi.pill(_('待验证'), 'warning');
 	return rulesetStatus(entry);
 }
 
@@ -568,7 +528,7 @@ function rulesetRows(items) {
 	return items.map(function(entry) {
 		const required = !(entry && entry.required === false);
 		const busy = downloadingTag && entry && entry.tag === downloadingTag;
-		return E('div', { 'style': 'display: grid; grid-template-columns: minmax(150px, 1.1fr) 92px 84px minmax(220px, 1.7fr) 86px 120px minmax(220px, 1.8fr) 98px; gap: .75rem; padding: .5rem 0; border-bottom: 1px solid #eee; align-items: center;' }, [
+		return E('div', { 'class': shinraMotion.softRowClass(), 'style': 'display: grid; grid-template-columns: minmax(150px, 1.1fr) 92px 84px minmax(220px, 1.7fr) 86px 120px minmax(220px, 1.8fr) 98px; gap: .75rem; padding: .5rem 0; border-bottom: 1px solid #eee; align-items: center;' }, [
 			E('div', { 'style': 'overflow-wrap: anywhere; font-weight: 600;' }, valueText(entry && entry.tag)),
 			E('div', {}, rowStatus(entry)),
 			E('div', { 'style': 'color: #667;' }, templateRequiredText(entry)),
@@ -578,7 +538,7 @@ function rulesetRows(items) {
 			E('div', { 'style': 'overflow-wrap: anywhere; white-space: pre-line; color: #667;' }, sourceText(entry)),
 			E('div', {}, required ? E('button', {
 				'type': 'button',
-				'class': 'btn cbi-button',
+				'class': shinraMotion.buttonClass('btn cbi-button'),
 				'disabled': busy ? 'disabled' : null,
 				'click': function(ev) {
 					ev.preventDefault();
@@ -831,6 +791,8 @@ function redraw() {
 }
 
 function renderPage() {
+	shinraMotion.inject();
+
 	return E('div', { 'id': 'shinra-rulesets-root' }, [
 		pageHeader('规则集', '管理 main-profile.json 所需的规则集模式和本地资源。'),
 		modeSettings(),
