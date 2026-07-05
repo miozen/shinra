@@ -2,6 +2,8 @@
 'require view';
 'require rpc';
 'require shinra.time as shinraTime';
+'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 const callRuntimeStatus = rpc.declare({
 	object: 'shinra',
@@ -120,80 +122,11 @@ const callRollback = rpc.declare({
 let pageResults = {};
 let actionStatus = '';
 let actionStatusOk = true;
-
-function injectOverviewMotionStyles() {
-	if (document.getElementById('shinra-overview-motion-style'))
-		return;
-
-	const style = document.createElement('style');
-	style.id = 'shinra-overview-motion-style';
-	style.textContent = [
-		'.shinra-overview-card {',
-		'  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, filter .16s ease;',
-		'  will-change: transform;',
-		'}',
-		'.shinra-overview-card:hover {',
-		'  transform: translateY(-2px);',
-		'  border-color: #cbd5e1;',
-		'  box-shadow: 0 10px 22px rgba(15, 23, 42, .08);',
-		'  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);',
-		'}',
-		'.shinra-overview-card:active {',
-		'  transform: translateY(0);',
-		'  box-shadow: 0 4px 10px rgba(15, 23, 42, .06);',
-		'}',
-		'.shinra-overview-card-clickable:focus-visible, .shinra-overview-action-button:focus-visible, .shinra-overview-card-action:focus-visible {',
-		'  outline: 2px solid #5b6ee1;',
-		'  outline-offset: 2px;',
-		'}',
-		'.shinra-overview-card-action {',
-		'  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, color .16s ease;',
-		'}',
-		'.shinra-overview-card-action:hover {',
-		'  transform: translateY(-1px);',
-		'  border-color: #bfdbfe;',
-		'  background: #eff6ff;',
-		'  color: #1d4ed8;',
-		'  box-shadow: 0 6px 14px rgba(37, 99, 235, .12);',
-		'}',
-		'.shinra-overview-card-action:active {',
-		'  transform: translateY(0);',
-		'  box-shadow: none;',
-		'}',
-		'.shinra-overview-action-button {',
-		'  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;',
-		'}',
-		'.shinra-overview-action-button:hover {',
-		'  transform: translateY(-2px);',
-		'  box-shadow: 0 8px 18px rgba(15, 23, 42, .14);',
-		'  filter: brightness(1.03);',
-		'}',
-		'.shinra-overview-action-button:active {',
-		'  transform: translateY(0);',
-		'  box-shadow: 0 3px 8px rgba(15, 23, 42, .10);',
-		'}',
-		'@media (prefers-reduced-motion: reduce) {',
-		'  .shinra-overview-card, .shinra-overview-card-action, .shinra-overview-action-button {',
-		'    transition: none;',
-		'    will-change: auto;',
-		'  }',
-		'  .shinra-overview-card:hover, .shinra-overview-card:active, .shinra-overview-card-action:hover, .shinra-overview-card-action:active, .shinra-overview-action-button:hover, .shinra-overview-action-button:active {',
-		'    transform: none;',
-		'  }',
-		'}'
-	].join('\n');
-
-	document.head.appendChild(style);
-}
-
-function dataOf(result) {
-	if (result && result.ok && result.data)
-		return result.data;
-	return {};
-}
+let supplementalLoading = false;
+let supplementalLoadSeq = 0;
 
 function stateOf() {
-	const data = dataOf(pageResults.runtime);
+	const data = shinraUi.dataOf(pageResults.runtime);
 	return data.state || {};
 }
 
@@ -205,40 +138,11 @@ function safeJson(text) {
 	}
 }
 
-function valueText(value) {
-	if (value == null || value === '')
-		return '-';
-	return String(value);
-}
-
 function routerHostUrl(url) {
-	url = valueText(url);
+	url = shinraUi.valueText(url);
 	if (url === '-')
 		return url;
 	return url.replace('://<router-host>', '://%s'.format(window.location.hostname || 'router-host'));
-}
-
-function sectionStyle() {
-	return 'border: 1px solid #dfe3e8; border-radius: 8px; padding: .75rem 1rem; margin: 0 0 .75rem; background: #fff;';
-}
-
-function mutedStyle() {
-	return 'color: #667; line-height: 1.35; overflow-wrap: anywhere;';
-}
-
-function pageHeader(title, description) {
-	return E('div', { 'style': sectionStyle() }, [
-		E('h2', { 'style': 'margin: 0 0 .35rem; line-height: 1.25;' }, title),
-		E('p', { 'style': mutedStyle() + ' margin: 0;' }, description)
-	]);
-}
-
-function sectionTitle(title) {
-	return E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, title);
-}
-
-function sectionDescription(text) {
-	return E('div', { 'style': mutedStyle() + ' margin: 0 0 .6rem;' }, text);
 }
 
 function cardStyle(accent, clickable) {
@@ -255,10 +159,10 @@ function externalLinkIcon() {
 }
 
 function card(title, value, detail, accent, href, action) {
-	const detailContent = typeof detail === 'string' || detail == null ? valueText(detail) : detail;
+	const detailContent = typeof detail === 'string' || detail == null ? shinraUi.valueText(detail) : detail;
 	const tag = href && !action ? 'a' : 'div';
 	const attrs = {
-		'class': 'shinra-overview-card%s'.format(href ? ' shinra-overview-card-clickable' : ''),
+		'class': shinraMotion.cardClass(null, !!href),
 		'style': cardStyle(accent, !!href) + (action ? ' position: relative; padding-right: 2.6rem;' : '')
 	};
 	if (href)
@@ -280,7 +184,7 @@ function card(title, value, detail, accent, href, action) {
 
 	const children = [
 		E('div', { 'style': 'font-size: 11px; color: #667; text-transform: uppercase; letter-spacing: .04em;' }, title),
-		E('div', { 'style': 'font-size: 19px; font-weight: 700; margin-top: .2rem; line-height: 1.15; overflow-wrap: anywhere;' }, valueText(value)),
+		E('div', { 'style': 'font-size: 19px; font-weight: 700; margin-top: .2rem; line-height: 1.15; overflow-wrap: anywhere;' }, shinraUi.valueText(value)),
 		E('div', { 'style': 'margin-top: .35rem; color: #667; font-size: 12px; line-height: 1.3; overflow-wrap: anywhere;' }, detailContent)
 	];
 
@@ -319,7 +223,7 @@ function statusWord(status) {
 }
 
 function compactMessage(text) {
-	text = valueText(text);
+	text = shinraUi.valueText(text);
 	text = text.replace(/Required Rule Sets downloaded/g, '所需规则集已同步');
 	text = text.replace(/Rule Set sync running/g, '规则集正在同步');
 	text = text.replace(/Rule Set sync queued/g, '规则集同步已排队');
@@ -404,7 +308,7 @@ function schedulerPlanText(enabled, hour) {
 
 function operationButton(label, actionLabel, rpcCall, buttonClass, confirmText) {
 	return E('button', {
-		'class': 'btn cbi-button shinra-overview-action-button %s'.format(buttonClass || 'cbi-button-neutral'),
+		'class': shinraMotion.buttonClass('btn cbi-button %s'.format(buttonClass || 'cbi-button-neutral')),
 		'style': 'min-width: 5.5rem; padding-left: 1rem; padding-right: 1rem;',
 		'click': function(ev) {
 			ev.preventDefault();
@@ -420,15 +324,7 @@ function resourceHref(tab) {
 function setActionStatus(text, ok) {
 	actionStatus = text || '';
 	actionStatusOk = ok !== false;
-	const node = document.getElementById('shinra-overview-action-status');
-	if (!node)
-		return;
-
-	node.textContent = actionStatus;
-	node.style.display = actionStatus ? 'block' : 'none';
-	node.style.borderColor = actionStatusOk ? '#bbf7d0' : '#fecaca';
-	node.style.background = actionStatusOk ? '#f0fdf4' : '#fef2f2';
-	node.style.color = actionStatusOk ? '#166534' : '#991b1b';
+	shinraUi.paintStatus('shinra-overview-action-status', actionStatus, actionStatusOk ? 'ok' : 'error');
 }
 
 function resultError(result, fallback) {
@@ -484,6 +380,8 @@ function runAction(label, rpcCall, confirmText) {
 
 function refreshPage() {
 	return loadAll().then(function(results) {
+		supplementalLoadSeq++;
+		supplementalLoading = false;
 		pageResults = results;
 		redraw();
 		return results;
@@ -498,13 +396,7 @@ function loadAll() {
 		callNodeSnapshotSummary().catch(function(e) { return { ok: false, message: _('节点快照摘要加载失败'), detail: e.message || String(e) }; }),
 		callRulesetRequiredInventory().catch(function(e) { return { ok: false, message: _('规则集清单加载失败'), detail: e.message || String(e) }; }),
 		callDashboardStatus().catch(function(e) { return { ok: false, message: _('面板状态加载失败'), detail: e.message || String(e) }; }),
-		callApiStatus().catch(function(e) { return { ok: false, message: _('API 状态加载失败'), detail: e.message || String(e) }; }),
-		callProfileSourceGet().catch(function(e) { return { ok: false, message: _('模板源加载失败'), detail: e.message || String(e) }; }),
-		callRulesetPolicyGet().catch(function(e) { return { ok: false, message: _('规则集策略加载失败'), detail: e.message || String(e) }; }),
-		callNotifySettingsGet().catch(function(e) { return { ok: false, message: _('通知设置加载失败'), detail: e.message || String(e) }; }),
-		callAutoTaskStatusGet().catch(function(e) { return { ok: false, message: _('自动任务状态加载失败'), detail: e.message || String(e) }; }),
-		callSubscriptionsRefreshStatus().catch(function(e) { return { ok: false, message: _('订阅刷新任务状态加载失败'), detail: e.message || String(e) }; }),
-		callRulesetDownloadRequiredStatus().catch(function(e) { return { ok: false, message: _('规则集任务状态加载失败'), detail: e.message || String(e) }; })
+		callApiStatus().catch(function(e) { return { ok: false, message: _('API 状态加载失败'), detail: e.message || String(e) }; })
 	]).then(function(results) {
 		return {
 			runtime: results[0],
@@ -513,20 +405,59 @@ function loadAll() {
 			snapshot: results[3],
 			rules: results[4],
 			panel: results[5],
-			apiStatus: results[6],
-			profileSource: results[7],
-			rulesPolicy: results[8],
-			notify: results[9],
-			autoTask: results[10],
-			subscriptionTask: results[11],
-			rulesetTask: results[12]
+			apiStatus: results[6]
 		};
 	});
 }
 
+function hasSupplementalData() {
+	return !!(
+		pageResults.profileSource ||
+		pageResults.rulesPolicy ||
+		pageResults.notify ||
+		pageResults.autoTask ||
+		pageResults.subscriptionTask ||
+		pageResults.rulesetTask
+	);
+}
+
+function loadSupplemental() {
+	if (supplementalLoading || hasSupplementalData())
+		return;
+
+	supplementalLoading = true;
+	const seq = ++supplementalLoadSeq;
+	Promise.all([
+		callProfileSourceGet().catch(function(e) { return { ok: false, message: _('模板源加载失败'), detail: e.message || String(e) }; }),
+		callRulesetPolicyGet().catch(function(e) { return { ok: false, message: _('规则集策略加载失败'), detail: e.message || String(e) }; }),
+		callNotifySettingsGet().catch(function(e) { return { ok: false, message: _('通知设置加载失败'), detail: e.message || String(e) }; }),
+		callAutoTaskStatusGet().catch(function(e) { return { ok: false, message: _('自动任务状态加载失败'), detail: e.message || String(e) }; }),
+		callSubscriptionsRefreshStatus().catch(function(e) { return { ok: false, message: _('订阅刷新任务状态加载失败'), detail: e.message || String(e) }; }),
+		callRulesetDownloadRequiredStatus().catch(function(e) { return { ok: false, message: _('规则集任务状态加载失败'), detail: e.message || String(e) }; })
+	]).then(function(results) {
+		if (seq !== supplementalLoadSeq)
+			return;
+		pageResults.profileSource = results[0];
+		pageResults.rulesPolicy = results[1];
+		pageResults.notify = results[2];
+		pageResults.autoTask = results[3];
+		pageResults.subscriptionTask = results[4];
+		pageResults.rulesetTask = results[5];
+		supplementalLoading = false;
+		redraw();
+	}).catch(function() {
+		if (seq === supplementalLoadSeq)
+			supplementalLoading = false;
+	});
+}
+
+function ensureSupplementalLoad() {
+	window.setTimeout(loadSupplemental, 0);
+}
+
 function runtimeCards() {
 	const state = stateOf();
-	const status = dataOf(pageResults.apiStatus);
+	const status = shinraUi.dataOf(pageResults.apiStatus);
 	const official = status.official_api || {};
 	const clash = status.clash_api || {};
 	const running = !!state.sing_box_running;
@@ -562,27 +493,27 @@ function runtimeCards() {
 }
 
 function resourceCards() {
-	const profile = dataOf(pageResults.profile);
-	const subscriptions = safeJson(dataOf(pageResults.subscriptions).content || '{}');
-	const snapshot = dataOf(pageResults.snapshot);
-	const rules = dataOf(pageResults.rules).summary || {};
-	const panel = dataOf(pageResults.panel);
+	const profile = shinraUi.dataOf(pageResults.profile);
+	const subscriptions = safeJson(shinraUi.dataOf(pageResults.subscriptions).content || '{}');
+	const snapshot = shinraUi.dataOf(pageResults.snapshot);
+	const rules = shinraUi.dataOf(pageResults.rules).summary || {};
+	const panel = shinraUi.dataOf(pageResults.panel);
 	const panelSource = panel.source || {};
 	const panelDashboard = panel.dashboard || panelSource.dashboard || {};
-	const profileSource = dataOf(pageResults.profileSource).source || {};
-	const rulesPolicy = dataOf(pageResults.rulesPolicy).policy || {};
-	const notifyData = dataOf(pageResults.notify);
+	const profileSource = shinraUi.dataOf(pageResults.profileSource).source || {};
+	const rulesPolicy = shinraUi.dataOf(pageResults.rulesPolicy).policy || {};
+	const notifyData = shinraUi.dataOf(pageResults.notify);
 	const notifySettings = notifyData.settings || {};
 	const notifyTelegram = notifySettings.telegram || {};
 	const notifyState = notifyData.state || {};
-	const autoTaskData = dataOf(pageResults.autoTask);
+	const autoTaskData = shinraUi.dataOf(pageResults.autoTask);
 	const autoTask = autoTaskData.state || {};
 	const scheduler = autoTaskData.scheduler || {};
 	const schedulerTasks = autoTask.tasks || {};
 	const subSchedulerTask = schedulerTasks['subscription.refresh'] || {};
 	const rulesSchedulerTask = schedulerTasks['ruleset.sync'] || {};
-	const subTask = dataOf(pageResults.subscriptionTask).task || {};
-	const rulesTask = dataOf(pageResults.rulesetTask).task || {};
+	const subTask = shinraUi.dataOf(pageResults.subscriptionTask).task || {};
+	const rulesTask = shinraUi.dataOf(pageResults.rulesetTask).task || {};
 	const sourceCount = Array.isArray(subscriptions.sources) ? subscriptions.sources.length : 0;
 	const nodeCount = Number(snapshot.node_count || 0);
 	const missingRules = Number(rules.missing_count || 0);
@@ -616,7 +547,7 @@ function resourceCards() {
 	const panelUrl = routerHostUrl(panel.dashboard_url);
 	const panelDetail = _('%s | %s').format(panelUrl !== '-' ? _('Dashboard 已托管') : _('Dashboard 地址未知'), panelDashboard.path || '-');
 	const panelAction = panelUrl !== '-' ? E('a', {
-			'class': 'shinra-overview-card-action',
+			'class': shinraMotion.iconButtonClass(),
 			'href': panelUrl,
 			'target': '_blank',
 			'rel': 'noopener noreferrer',
@@ -646,32 +577,27 @@ function resourceCards() {
 }
 
 function runtimeStatusSection() {
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('运行时状态')),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('运行时状态')),
 		runtimeCards()
 	]);
 }
 
 function resourceStatusSection() {
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('资源就绪状态')),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('资源就绪状态')),
 		resourceCards()
 	]);
 }
 
 function operationButtons() {
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('运行时操作')),
-		sectionDescription(_('资源准备完成后，在这里执行生成、检查、应用和回滚。策略组切换和延迟测速交给 Dashboard。')),
-		E('div', {
-			'id': 'shinra-overview-action-status',
-			'style': 'display: %s; border: 1px solid %s; border-radius: 8px; padding: .75rem; margin-bottom: .75rem; background: %s; color: %s;'.format(
-				actionStatus ? 'block' : 'none',
-				actionStatusOk ? '#bbf7d0' : '#fecaca',
-				actionStatusOk ? '#f0fdf4' : '#fef2f2',
-				actionStatusOk ? '#166534' : '#991b1b'
-			)
-		}, actionStatus),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('运行时操作')),
+		shinraUi.sectionDescription(_('资源准备完成后，在这里执行生成、检查、应用和回滚。策略组切换和延迟测速交给 Dashboard。')),
+		shinraUi.statusBox('shinra-overview-action-status', actionStatus, actionStatusOk ? 'ok' : 'error', {
+			padding: '.75rem',
+			margin: '0 0 .75rem'
+		}),
 		E('div', { 'style': 'display: flex; flex-wrap: wrap; gap: .5rem;' }, [
 			operationButton(_('生成'), _('生成候选配置'), callGenerate),
 			operationButton(_('检查'), _('检查候选配置'), callCheck),
@@ -685,10 +611,11 @@ function operationButtons() {
 
 function renderPage() {
 	const loadError = pageLoadError();
-	injectOverviewMotionStyles();
+	shinraMotion.inject();
+	ensureSupplementalLoad();
 
 	return E('div', { 'id': 'shinra-overview-root', 'class': 'cbi-map' }, [
-		pageHeader(_('Shinra'), _('概览是控制面首页。运行时策略组交互由 Dashboard 处理。')),
+		shinraUi.pageHeader(_('Shinra'), _('概览是控制面首页。运行时策略组交互由 Dashboard 处理。')),
 		loadError ? E('div', { 'style': 'border: 1px solid #fecaca; border-radius: 8px; padding: .65rem; margin: 0 0 .75rem; background: #fef2f2; color: #991b1b;' }, loadError) : '',
 		runtimeStatusSection(),
 		resourceStatusSection(),
@@ -708,6 +635,8 @@ return view.extend({
 	},
 
 	render: function(results) {
+		supplementalLoadSeq++;
+		supplementalLoading = false;
 		pageResults = results || {};
 		return renderPage();
 	},

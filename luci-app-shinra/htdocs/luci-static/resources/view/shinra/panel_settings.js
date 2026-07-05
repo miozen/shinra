@@ -2,6 +2,7 @@
 'require view';
 'require rpc';
 'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 const callDashboardSourceGet = rpc.declare({
 	object: 'shinra',
@@ -75,33 +76,6 @@ function clashApiOf() {
 	return source.clash_api || defaultSource().clash_api;
 }
 
-function sectionStyle() {
-	return 'border: 1px solid #dfe3e8; border-radius: 8px; padding: .75rem 1rem; margin: 0 0 .75rem; background: #fff;';
-}
-
-function mutedStyle() {
-	return 'color: #667; line-height: 1.35; overflow-wrap: anywhere;';
-}
-
-function sectionTitle(title) {
-	return E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, title);
-}
-
-function sectionDescription(text) {
-	return E('div', { 'style': mutedStyle() + ' margin: 0 0 .6rem;' }, text);
-}
-
-function pageHeader(title, description) {
-	return E('div', { 'style': sectionStyle() }, [
-		E('h2', { 'style': 'margin: 0 0 .35rem; line-height: 1.25;' }, title),
-		E('p', { 'style': mutedStyle() + ' margin: 0;' }, description)
-	]);
-}
-
-function fieldLabel(text) {
-	return E('div', { 'style': 'font-size: 12px; color: #667; font-weight: 700; margin: 0 0 .25rem; line-height: 1.25;' }, text);
-}
-
 function resultMessage(result, fallback) {
 	if (result && result.ok)
 		return fallback || result.message || _('完成');
@@ -126,30 +100,17 @@ function inlineResultNode() {
 	const text = actionStatus || loadError;
 	const ok = actionStatus ? actionStatusOk : !loadError;
 
-	return E('div', {
-		'id': 'shinra-panel-settings-action-status',
-		'style': 'display: %s; border: 1px solid %s; border-radius: 8px; padding: .45rem .65rem; background: %s; color: %s; overflow-wrap: anywhere; min-width: min(360px, 100%); flex: 1 1 320px;'.format(
-			text ? 'block' : 'none',
-			ok ? '#bbf7d0' : '#fecaca',
-			ok ? '#f0fdf4' : '#fef2f2',
-			ok ? '#166534' : '#991b1b'
-		)
-	}, text);
+	return shinraUi.statusBox('shinra-panel-settings-action-status', text, ok ? 'ok' : 'error', {
+		padding: '.45rem .65rem',
+		margin: '0',
+		style: 'min-width: min(360px, 100%); flex: 1 1 320px;'
+	});
 }
 
 function setStatus(text, ok) {
 	actionStatus = text || '';
 	actionStatusOk = ok !== false;
-
-	const node = document.getElementById('shinra-panel-settings-action-status');
-	if (!node)
-		return;
-
-	node.textContent = actionStatus;
-	node.style.display = actionStatus ? 'block' : 'none';
-	node.style.borderColor = actionStatusOk ? '#bbf7d0' : '#fecaca';
-	node.style.background = actionStatusOk ? '#f0fdf4' : '#fef2f2';
-	node.style.color = actionStatusOk ? '#166534' : '#991b1b';
+	shinraUi.paintStatus('shinra-panel-settings-action-status', actionStatus, actionStatusOk ? 'ok' : 'error');
 }
 
 function inputValue(id, fallback) {
@@ -275,29 +236,29 @@ function saveSource() {
 function apiSettings() {
 	const source = sourceOf();
 
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('sing-box API')),
-		sectionDescription(_('这些设置用于生成 sing-box services 里的 API 服务。Profile 已配置 sing-box API 且不冲突时优先保留 Profile；与 Clash API 端口冲突时使用这里的配置兜底。修改后需要重新生成并应用配置。')),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('Official API')),
+		shinraUi.sectionDescription(_('这些设置用于生成 sing-box services 里的 API 服务。Profile 已配置 Official API 且不冲突时优先保留 Profile；与 Clash API 端口冲突时使用这里的配置兜底。修改后需要重新生成并应用配置。')),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;' }, [
 			shinraUi.checkboxInput({ 'id': 'shinra-dashboard-enabled', 'checked': source.enabled ? 'checked' : null }),
-			E('span', {}, _('启用 sing-box API'))
+			E('span', {}, _('启用 Official API'))
 		]),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem;' }, [
 			E('label', {}, [
-				fieldLabel(_('监听地址')),
+				shinraUi.fieldLabel(_('监听地址')),
 				E('input', { 'id': 'shinra-dashboard-listen', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'value': source.listen || '0.0.0.0' })
 			]),
 			E('label', {}, [
-				fieldLabel(_('监听端口')),
+				shinraUi.fieldLabel(_('监听端口')),
 				E('input', { 'id': 'shinra-dashboard-listen-port', 'type': 'number', 'min': '1', 'max': '65535', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'value': source.listen_port || 20123 })
 			]),
 			E('label', {}, [
-				fieldLabel(_('访问密钥')),
+				shinraUi.fieldLabel(_('访问密钥')),
 				E('input', { 'id': 'shinra-dashboard-secret', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'placeholder': _('私有局域网可留空'), 'value': source.secret || '' })
 			])
 		]),
 		E('label', { 'style': 'display: block; margin-top: .6rem;' }, [
-			fieldLabel(_('允许的 CORS 来源')),
+			shinraUi.fieldLabel(_('允许的 CORS 来源')),
 			E('textarea', { 'id': 'shinra-dashboard-origins', 'class': 'cbi-input-textarea', 'style': 'width: 100%; min-height: 64px; box-sizing: border-box;' }, originText(source))
 		]),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-top: .6rem;' }, [
@@ -310,23 +271,23 @@ function apiSettings() {
 function dashboardSettings() {
 	const dash = dashboardOf();
 
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('Dashboard')),
-		sectionDescription(_('面板文件由 sing-box 根据下载地址自动下载、更新并托管。Shinra 只保存配置。')),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('Dashboard')),
+		shinraUi.sectionDescription(_('面板文件由 sing-box 根据下载地址自动下载、更新并托管。Shinra 只保存配置。')),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;' }, [
 			shinraUi.checkboxInput({ 'id': 'shinra-dashboard-ui-enabled', 'checked': dash.enabled ? 'checked' : null }),
 			E('span', {}, _('启用 Dashboard'))
 		]),
 		E('label', { 'style': 'display: block; margin-top: .6rem;' }, [
-			fieldLabel(_('面板目录')),
+			shinraUi.fieldLabel(_('面板目录')),
 			E('input', { 'id': 'shinra-dashboard-path', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'value': dash.path || '/www/shinra/dashboard' })
 		]),
 		E('label', { 'style': 'display: block; margin-top: .6rem;' }, [
-			fieldLabel(_('下载地址')),
+			shinraUi.fieldLabel(_('下载地址')),
 			E('input', { 'id': 'shinra-dashboard-download-url', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'value': dash.download_url || DEFAULT_DOWNLOAD_URL })
 		]),
 		E('label', { 'style': 'display: block; margin-top: .6rem;' }, [
-			fieldLabel(_('更新间隔')),
+			shinraUi.fieldLabel(_('更新间隔')),
 			E('input', { 'id': 'shinra-dashboard-update-interval', 'class': 'cbi-input-text', 'style': 'width: 220px; max-width: 100%; box-sizing: border-box;', 'value': dash.update_interval || '1d' })
 		])
 	]);
@@ -336,28 +297,28 @@ function clashApiSettings() {
 	const clash = clashApiOf();
 	const controller = splitController(clash.external_controller);
 
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('Clash API')),
-		sectionDescription(_('这些设置用于生成 sing-box experimental.clash_api。Profile 已配置且不与最终生效的 sing-box API 冲突时优先保留 Profile；端口冲突时使用这里的配置兜底。')),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('Clash API')),
+		shinraUi.sectionDescription(_('这些设置用于生成 sing-box experimental.clash_api。Profile 已配置且不与最终生效的 Official API 冲突时优先保留 Profile；端口冲突时使用这里的配置兜底。')),
 		E('label', { 'style': 'display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;' }, [
 			shinraUi.checkboxInput({ 'id': 'shinra-clash-api-enabled', 'checked': clash.enabled ? 'checked' : null }),
 			E('span', {}, _('启用 Clash API'))
 		]),
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem;' }, [
 			E('label', {}, [
-				fieldLabel(_('监听地址')),
+				shinraUi.fieldLabel(_('监听地址')),
 				E('input', { 'id': 'shinra-clash-api-listen', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'value': controller.host || '0.0.0.0' })
 			]),
 			E('label', {}, [
-				fieldLabel(_('监听端口')),
+				shinraUi.fieldLabel(_('监听端口')),
 				E('input', { 'id': 'shinra-clash-api-listen-port', 'type': 'number', 'min': '1', 'max': '65535', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'value': controller.port || 9090 })
 			]),
 			E('label', {}, [
-				fieldLabel(_('访问密钥')),
+				shinraUi.fieldLabel(_('访问密钥')),
 				E('input', { 'id': 'shinra-clash-api-secret', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'placeholder': _('私有局域网可留空'), 'value': clash.secret || '' })
 			]),
 			E('label', {}, [
-				fieldLabel(_('默认模式')),
+				shinraUi.fieldLabel(_('默认模式')),
 				E('select', { 'id': 'shinra-clash-api-default-mode', 'class': 'cbi-input-select', 'style': 'width: 100%; box-sizing: border-box;' }, [
 					E('option', { 'value': 'rule', 'selected': (clash.default_mode || 'rule') === 'rule' ? 'selected' : null }, _('rule')),
 					E('option', { 'value': 'global', 'selected': clash.default_mode === 'global' ? 'selected' : null }, _('global')),
@@ -366,23 +327,25 @@ function clashApiSettings() {
 			])
 		]),
 		E('label', { 'style': 'display: block; margin-top: .6rem;' }, [
-			fieldLabel(_('External UI')),
+			shinraUi.fieldLabel(_('External UI')),
 			E('input', { 'id': 'shinra-clash-api-external-ui', 'class': 'cbi-input-text', 'style': 'width: 100%; box-sizing: border-box;', 'placeholder': _('通常留空'), 'value': clash.external_ui || '' })
 		])
 	]);
 }
 
 function renderContent() {
+	shinraMotion.inject();
+
 	return E('div', { 'id': 'shinra-panel-settings-root' }, [
-		pageHeader(
+		shinraUi.pageHeader(
 			_('面板'),
-			_('sing-box API 负责 Dashboard 托管；Clash API 用于兼容面板的模式和策略组控制。Profile 中已配置的 API 会优先保留，端口冲突时使用此页设置兜底。Shinra 只保存设置并在重新生成配置时写入 sing-box。')
+			_('Official API 负责 Dashboard 托管；Clash API 用于兼容面板的模式和策略组控制。Profile 中已配置的 API 会优先保留，端口冲突时使用此页设置兜底。Shinra 只保存设置并在重新生成配置时写入 sing-box。')
 		),
 		apiSettings(),
 		dashboardSettings(),
 		clashApiSettings(),
 		E('div', { 'style': 'display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .7rem;' }, [
-			E('button', { 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return saveSource(); } }, _('保存设置')),
+			E('button', { 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-save'), 'click': function(ev) { ev.preventDefault(); return saveSource(); } }, _('保存设置')),
 			inlineResultNode()
 		])
 	]);

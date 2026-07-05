@@ -3,6 +3,7 @@
 'require rpc';
 'require shinra.time as shinraTime';
 'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 const callSubscriptionsGet = rpc.declare({
 	object: 'shinra',
@@ -231,15 +232,7 @@ function checked(id) {
 }
 
 function setStatus(message, ok) {
-	let node = document.getElementById('shinra-subscriptions-status');
-	if (!node)
-		return;
-
-	node.textContent = message || '';
-	node.style.display = message ? 'block' : 'none';
-	node.style.borderColor = ok ? '#bbf7d0' : '#fecaca';
-	node.style.background = ok ? '#f0fdf4' : '#fef2f2';
-	node.style.color = ok ? '#166534' : '#991b1b';
+	shinraUi.paintStatus('shinra-subscriptions-status', message || '', ok ? 'ok' : 'error');
 }
 
 function setTestReport(target, result) {
@@ -353,7 +346,7 @@ function sourceMatrix(policy, summary) {
 		E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: .6rem;' }, [
 			E('h3', { 'style': 'margin: 0; line-height: 1.25;' }, _('订阅源区域矩阵')),
 			E('button', {
-				'class': 'btn cbi-button',
+				'class': shinraMotion.buttonClass('btn cbi-button'),
 				'click': function(ev) {
 					ev.preventDefault();
 					addSource();
@@ -400,7 +393,7 @@ function sourceMatrix(policy, summary) {
 						E('td', { 'style': 'text-align: right;' }, '%d'.format(item.node_count || 0)),
 						E('td', { 'style': 'text-align: right; white-space: nowrap;' }, [
 							E('button', {
-								'class': 'btn cbi-button',
+								'class': shinraMotion.buttonClass('btn cbi-button'),
 								'click': function(ev) {
 									ev.preventDefault();
 									openSourceEditor(index);
@@ -408,7 +401,7 @@ function sourceMatrix(policy, summary) {
 							}, _('编辑')),
 							' ',
 							E('button', {
-								'class': 'btn cbi-button',
+								'class': shinraMotion.buttonClass('btn cbi-button'),
 								'click': function(ev) {
 									ev.preventDefault();
 									let policy = collectPolicyFromPage();
@@ -418,7 +411,7 @@ function sourceMatrix(policy, summary) {
 							}, _('测试')),
 							' ',
 							E('button', {
-								'class': 'btn cbi-button cbi-button-apply',
+								'class': shinraMotion.buttonClass('btn cbi-button cbi-button-apply'),
 								'click': function(ev) {
 									ev.preventDefault();
 									refreshOneSource(index);
@@ -426,7 +419,7 @@ function sourceMatrix(policy, summary) {
 							}, _('刷新')),
 							' ',
 							E('button', {
-								'class': 'btn cbi-button cbi-button-remove',
+								'class': shinraMotion.buttonClass('btn cbi-button cbi-button-remove'),
 								'click': function(ev) {
 									ev.preventDefault();
 									removeSource(index);
@@ -650,7 +643,7 @@ function sourceEditor(policy, index) {
 		E('div', { 'style': 'width: min(720px, 100%); max-height: min(760px, calc(100vh - 2rem)); overflow: auto; border: 1px solid #d8dde6; border-radius: 10px; padding: 1rem; background: #fff; box-shadow: 0 18px 50px rgba(15, 23, 42, .22);' }, [
 			E('div', { 'style': 'display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin-bottom: .75rem;' }, [
 				E('h3', { 'style': 'margin: 0;' }, isNew ? _('添加订阅源') : _('编辑订阅源')),
-				E('button', { 'class': 'btn cbi-button', 'click': function(ev) { ev.preventDefault(); closeSourceEditor(); } }, _('取消'))
+				E('button', { 'class': shinraMotion.buttonClass('btn cbi-button'), 'click': function(ev) { ev.preventDefault(); closeSourceEditor(); } }, _('取消'))
 			]),
 			field(_('名称'), E('input', { 'id': 'shinra-editor-name', 'class': 'cbi-input-text', 'style': 'width: 100%;', 'value': source.name || '' })),
 			field(_('URL'), E('input', { 'id': 'shinra-editor-url', 'class': 'cbi-input-text', 'style': 'width: 100%;', 'value': source.url || '' })),
@@ -667,9 +660,9 @@ function sourceEditor(policy, index) {
 			}))),
 			E('div', { 'id': 'shinra-editor-test-report', 'style': 'display: none; border: 1px solid #ddd; border-radius: 8px; padding: .65rem; margin-top: .75rem; overflow-wrap: anywhere;' }),
 			E('div', { 'style': 'display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; margin-top: .9rem;' }, [
-				E('button', { 'class': 'btn cbi-button', 'click': function(ev) { ev.preventDefault(); closeSourceEditor(); } }, _('取消')),
-				E('button', { 'class': 'btn cbi-button', 'click': function(ev) { ev.preventDefault(); testEditorSource(); } }, _('测试')),
-				E('button', { 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); saveSourceEditor(); } }, _('保存草稿'))
+				E('button', { 'class': shinraMotion.buttonClass('btn cbi-button'), 'click': function(ev) { ev.preventDefault(); closeSourceEditor(); } }, _('取消')),
+				E('button', { 'class': shinraMotion.buttonClass('btn cbi-button'), 'click': function(ev) { ev.preventDefault(); testEditorSource(); } }, _('测试')),
+				E('button', { 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-save'), 'click': function(ev) { ev.preventDefault(); saveSourceEditor(); } }, _('保存草稿'))
 			])
 		])
 	]);
@@ -681,7 +674,7 @@ function sourceRows(summary) {
 		return [ E('div', { 'style': 'color: #667; padding: .35rem 0;' }, _('没有观测到订阅源。')) ];
 
 	return sources.map(function(source) {
-		return E('div', { 'style': 'display: grid; grid-template-columns: minmax(0, 1.4fr) 80px 90px minmax(0, 1fr); gap: .75rem; padding: .45rem 0; border-bottom: 1px solid #eee; align-items: center;' }, [
+		return E('div', { 'class': shinraMotion.softRowClass(), 'style': 'display: grid; grid-template-columns: minmax(0, 1.4fr) 80px 90px minmax(0, 1fr); gap: .75rem; padding: .45rem 0; border-bottom: 1px solid #eee; align-items: center;' }, [
 			E('div', { 'style': 'overflow-wrap: anywhere; font-weight: 600;' }, source.name || '-'),
 			E('div', {}, source.ok ? _('成功') : _('失败')),
 			E('div', {}, '%d'.format(source.node_count || 0)),
@@ -737,7 +730,7 @@ function nodeList(nodes) {
 		return E('div', { 'style': 'color: #667; padding: .7rem 0;' }, _('该订阅源没有观测到节点。'));
 
 	return E('div', {}, nodes.slice(0, 80).map(function(node) {
-		return E('div', { 'style': 'display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, .6fr) minmax(90px, .8fr); gap: .75rem; padding: .45rem 0; border-bottom: 1px solid #eee; align-items: center;' }, [
+		return E('div', { 'class': shinraMotion.softRowClass(), 'style': 'display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, .6fr) minmax(90px, .8fr); gap: .75rem; padding: .45rem 0; border-bottom: 1px solid #eee; align-items: center;' }, [
 			E('div', { 'style': 'overflow-wrap: anywhere; font-weight: 600;' }, node.tag || '-'),
 			E('div', { 'style': 'color: #667;' }, node.type || '-'),
 			E('div', { 'style': 'color: #667;' }, node.source || '-')
@@ -762,7 +755,7 @@ function nodeTabs(summary) {
 		E('div', { 'style': 'display: flex; gap: .45rem; flex-wrap: wrap; margin-bottom: .85rem;' }, tabs.map(function(tab) {
 			let selected = tab.name === active;
 			return E('button', {
-				'class': 'btn cbi-button',
+				'class': shinraMotion.buttonClass('btn cbi-button'),
 				'style': selected ? 'border-color: #2563eb; background: #eff6ff; color: #1d4ed8;' : '',
 				'click': function(ev) {
 					ev.preventDefault();
@@ -782,10 +775,10 @@ function nodeTabs(summary) {
 function snapshotSummary(summary) {
 	return E('div', { 'id': 'shinra-node-snapshot-summary' }, [
 		E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin-bottom: .75rem;' }, [
-			field(_('节点'), '%d'.format(summary && summary.node_count || 0)),
-			field(_('订阅源'), '%d'.format(summary && summary.source_count || 0)),
-			field(_('策略'), summary && summary.refresh_strategy || 'direct'),
-			field(_('更新时间'), shinraTime.formatMaybeTime(summary && summary.updated_at))
+			shinraUi.statCard(_('节点'), '%d'.format(summary && summary.node_count || 0), { 'class': shinraMotion.cardClass() }),
+			shinraUi.statCard(_('订阅源'), '%d'.format(summary && summary.source_count || 0), { 'class': shinraMotion.cardClass() }),
+			shinraUi.statCard(_('策略'), summary && summary.refresh_strategy || 'direct', { 'class': shinraMotion.cardClass() }),
+			shinraUi.statCard(_('更新时间'), shinraTime.formatMaybeTime(summary && summary.updated_at), { 'class': shinraMotion.cardClass() })
 		]),
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('订阅源摘要')),
@@ -1076,20 +1069,21 @@ return view.extend({
 		let content = data && data[0] && data[0].ok && data[0].data ? data[0].data.content : '{}';
 		let summary = data && data[1] && data[1].ok && data[1].data ? data[1].data : {};
 		let policy = parseSubscriptions(content);
+		shinraMotion.inject();
 		window.shinraNodeSnapshotSummary = summary;
 		setDraft(policy);
 
 		return E('div', { 'class': 'cbi-map' }, [
 			E('div', {}, [
 				pageHeader(_('订阅'), _('管理 Sub-Store 输出订阅源、区域授权、清洗策略和 URLTest 参数。刷新只写入节点快照。')),
-				E('div', { 'id': 'shinra-subscriptions-status', 'style': 'display: none; border: 1px solid #ddd; border-radius: 8px; padding: .65rem; margin: 0 0 .75rem;' }),
+				shinraUi.statusBox('shinra-subscriptions-status', '', 'neutral', { margin: '0 0 .75rem' }),
 				E('div', { 'style': 'display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; margin: 0 0 .75rem;' }, [
 					E('select', { 'id': 'shinra-refresh-strategy', 'class': 'cbi-input-select' }, [
 						E('option', { 'value': 'direct', 'selected': policy.refresh_strategy === 'direct' ? 'selected' : null }, _('直连刷新')),
 						E('option', { 'value': 'proxy', 'selected': policy.refresh_strategy === 'proxy' ? 'selected' : null }, _('代理刷新'))
 					]),
-					E('button', { 'class': 'btn cbi-button cbi-button-save', 'click': this.handleSave.bind(this) }, _('保存订阅设置')),
-					E('button', { 'class': 'btn cbi-button cbi-button-apply', 'click': this.handleRefresh.bind(this) }, _('刷新节点快照'))
+					E('button', { 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-save'), 'click': this.handleSave.bind(this) }, _('保存订阅设置')),
+					E('button', { 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-apply'), 'click': this.handleRefresh.bind(this) }, _('刷新节点快照'))
 				]),
 				renderMain(policy, summary, null),
 				subscriptionUpdateDetails(policy),

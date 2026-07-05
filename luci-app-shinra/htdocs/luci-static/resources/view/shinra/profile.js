@@ -1,6 +1,8 @@
 'use strict';
 'require view';
 'require rpc';
+'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 const callProfileGet = rpc.declare({
 	object: 'shinra',
@@ -69,82 +71,17 @@ function sourceFetchStrategy() {
 	return sourceData().fetch_strategy === 'proxy' ? 'proxy' : 'direct';
 }
 
-function sectionStyle() {
-	return 'border: 1px solid #dfe3e8; border-radius: 8px; padding: .75rem 1rem; margin: 0 0 .75rem; background: #fff;';
-}
-
-function mutedStyle() {
-	return 'color: #667; line-height: 1.35; overflow-wrap: anywhere;';
-}
-
-function pageHeader(title, description) {
-	return E('div', { 'style': sectionStyle() }, [
-		E('h2', { 'style': 'margin: 0 0 .35rem; line-height: 1.25;' }, title),
-		E('p', { 'style': mutedStyle() + ' margin: 0;' }, description)
-	]);
-}
-
-function sectionTitle(title) {
-	return E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, title);
-}
-
-function sectionDescription(text) {
-	return E('div', { 'style': mutedStyle() + ' margin: 0 0 .6rem;' }, text);
-}
-
-function fieldLabel(text) {
-	return E('div', { 'style': 'font-size: 12px; color: #667; font-weight: 700; margin: 0 0 .25rem; line-height: 1.25;' }, text);
-}
-
-function actionRow(children) {
-	return E('div', { 'style': 'display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .7rem;' }, children);
-}
-
-function statusPill(text, level) {
-	let color = '#475569';
-	let bg = '#f1f5f9';
-
-	if (level === 'ok') {
-		color = '#166534';
-		bg = '#dcfce7';
-	} else if (level === 'warning') {
-		color = '#92400e';
-		bg = '#fef3c7';
-	} else if (level === 'error') {
-		color = '#991b1b';
-		bg = '#fee2e2';
-	}
-
-	return E('span', {
-		'style': 'display: inline-flex; align-items: center; min-height: 22px; padding: 0 .55rem; border-radius: 999px; font-size: 12px; font-weight: 700; color: %s; background: %s; white-space: nowrap;'.format(color, bg)
-	}, text);
-}
-
 function actionStatusBox() {
-	return E('div', {
-		'id': 'shinra-profile-action-status',
-		'style': 'display: %s; border: 1px solid %s; border-radius: 8px; padding: .75rem; margin-top: .85rem; background: %s; color: %s; overflow-wrap: anywhere;'.format(
-			actionStatus ? 'block' : 'none',
-			actionStatusOk ? '#bbf7d0' : '#fecaca',
-			actionStatusOk ? '#f0fdf4' : '#fef2f2',
-			actionStatusOk ? '#166534' : '#991b1b'
-		)
-	}, actionStatus);
+	return shinraUi.statusBox('shinra-profile-action-status', actionStatus, actionStatusOk ? 'ok' : 'error', {
+		padding: '.75rem',
+		margin: '.85rem 0 0'
+	});
 }
 
 function setStatus(text, ok) {
 	actionStatus = text || '';
 	actionStatusOk = ok !== false;
-
-	const node = document.getElementById('shinra-profile-action-status');
-	if (!node)
-		return;
-
-	node.textContent = actionStatus;
-	node.style.display = actionStatus ? 'block' : 'none';
-	node.style.borderColor = actionStatusOk ? '#bbf7d0' : '#fecaca';
-	node.style.background = actionStatusOk ? '#f0fdf4' : '#fef2f2';
-	node.style.color = actionStatusOk ? '#166534' : '#991b1b';
+	shinraUi.paintStatus('shinra-profile-action-status', actionStatus, actionStatusOk ? 'ok' : 'error');
 }
 
 function resultError(result, fallback) {
@@ -248,11 +185,11 @@ function restoreDefault() {
 }
 
 function sourceSettings() {
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('模板同步')),
-		sectionDescription(_('设置远程 JSON 模板地址，并同步到 /etc/shinra/main-profile.json。同步会校验模板，并在替换前创建备份。')),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('模板同步')),
+		shinraUi.sectionDescription(_('设置远程 JSON 模板地址，并同步到 /etc/shinra/main-profile.json。同步会校验模板，并在替换前创建备份。')),
 		E('label', {}, [
-			fieldLabel(_('模板地址')),
+			shinraUi.fieldLabel(_('模板地址')),
 			E('input', {
 				'id': 'shinra-profile-source-url',
 				'class': 'cbi-input-text',
@@ -262,27 +199,27 @@ function sourceSettings() {
 			})
 		]),
 		E('label', { 'style': 'display: block; margin-top: .6rem;' }, [
-			fieldLabel(_('下载策略')),
+			shinraUi.fieldLabel(_('下载策略')),
 			E('select', { 'id': 'shinra-profile-fetch-strategy', 'class': 'cbi-input-select', 'style': 'min-width: 220px;' }, [
 				E('option', { 'value': 'direct', 'selected': sourceFetchStrategy() === 'direct' ? 'selected' : null }, _('直连')),
 				E('option', { 'value': 'proxy', 'selected': sourceFetchStrategy() === 'proxy' ? 'selected' : null }, _('代理'))
 			])
 		]),
-		actionRow([
-			E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-save', 'click': function(ev) { ev.preventDefault(); return saveSource(); } }, _('保存模板源')),
-			E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-apply', 'click': function(ev) { ev.preventDefault(); return syncRemote(); } }, _('同步模板'))
+		shinraUi.actionRow([
+			E('button', { 'type': 'button', 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-save'), 'click': function(ev) { ev.preventDefault(); return saveSource(); } }, _('保存模板源')),
+			E('button', { 'type': 'button', 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-apply'), 'click': function(ev) { ev.preventDefault(); return syncRemote(); } }, _('同步模板'))
 		]),
 		actionStatusBox()
 	]);
 }
 
 function localActions() {
-	return E('div', { 'style': sectionStyle() }, [
-		sectionTitle(_('本地恢复')),
-		sectionDescription(_('这些操作只修改 main-profile.json 及其备份，不会生成候选配置、应用运行配置或重启 sing-box。')),
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
+		shinraUi.sectionTitle(_('本地恢复')),
+		shinraUi.sectionDescription(_('这些操作只修改 main-profile.json 及其备份，不会生成候选配置、应用运行配置或重启 sing-box。')),
 		E('div', { 'style': 'display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 0;' }, [
-			E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-neutral', 'click': function(ev) { ev.preventDefault(); return rollbackProfile(); } }, _('回滚')),
-			E('button', { 'type': 'button', 'class': 'btn cbi-button cbi-button-remove', 'click': function(ev) { ev.preventDefault(); return restoreDefault(); } }, _('恢复内置模板'))
+			E('button', { 'type': 'button', 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-neutral'), 'click': function(ev) { ev.preventDefault(); return rollbackProfile(); } }, _('回滚')),
+			E('button', { 'type': 'button', 'class': shinraMotion.buttonClass('btn cbi-button cbi-button-remove'), 'click': function(ev) { ev.preventDefault(); return restoreDefault(); } }, _('恢复内置模板'))
 		])
 	]);
 }
@@ -291,10 +228,10 @@ function profilePreview() {
 	const content = profileContent(profileResult);
 	const valid = profileResult && profileResult.ok && dataOf(profileResult).valid !== false;
 
-	return E('div', { 'style': sectionStyle() }, [
+	return E('div', { 'style': shinraUi.sectionStyle() }, [
 		E('div', { 'style': 'display: flex; justify-content: space-between; gap: .75rem; align-items: center; flex-wrap: wrap; margin-bottom: .6rem;' }, [
 			E('h3', { 'style': 'margin: 0;' }, _('只读预览')),
-			valid ? statusPill(_('有效'), 'ok') : statusPill(_('无效'), 'error')
+			valid ? shinraUi.pill(_('有效'), 'ok') : shinraUi.pill(_('无效'), 'error')
 		]),
 		E('pre', {
 			'style': 'max-height: 36rem; overflow: auto; padding: .85rem; margin: 0; border-radius: 8px; background: #0f172a; color: #e5e7eb; font-family: monospace; white-space: pre;'
@@ -309,8 +246,10 @@ function redraw() {
 }
 
 function renderPage() {
+	shinraMotion.inject();
+
 	return E('div', { 'id': 'shinra-profile-root', 'class': 'cbi-map' }, [
-		pageHeader(
+		shinraUi.pageHeader(
 			_('模板'),
 			_('只读预览 main-profile.json，并支持远程模板同步。')
 		),

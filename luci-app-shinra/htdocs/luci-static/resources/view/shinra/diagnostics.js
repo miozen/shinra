@@ -2,6 +2,8 @@
 'require view';
 'require rpc';
 'require shinra.time as shinraTime';
+'require shinra.ui as shinraUi';
+'require shinra.motion as shinraMotion';
 
 const callLogsGet = rpc.declare({
 	object: 'shinra',
@@ -35,78 +37,25 @@ const callApiStatus = rpc.declare({
 
 let activeTab = 'dataplane';
 let pageResults = {};
-
-function dataOf(result) {
-	if (result && result.ok && result.data)
-		return result.data;
-	return {};
-}
-
-function mutedStyle() {
-	return 'color: #667; line-height: 1.35; overflow-wrap: anywhere;';
-}
-
-function sectionStyle() {
-	return 'border: 1px solid #dfe3e8; border-radius: 8px; padding: .75rem 1rem; margin: 0 0 .75rem; background: #fff;';
-}
-
-function pageHeader(title, description) {
-	return E('div', { 'style': sectionStyle() }, [
-		E('h2', { 'style': 'margin: 0 0 .35rem; line-height: 1.25;' }, title),
-		E('p', { 'style': mutedStyle() + ' margin: 0;' }, description)
-	]);
-}
-
-function sectionTitle(title) {
-	return E('h3', { 'style': 'margin: 0 0 .45rem; line-height: 1.25;' }, title);
-}
-
-function sectionDescription(text) {
-	return E('div', { 'style': mutedStyle() + ' margin: 0 0 .6rem;' }, text);
-}
-
-function valueText(value) {
-	if (value == null || value === '')
-		return '-';
-	return String(value);
-}
+let logsLoading = false;
+let connectivityLoading = false;
 
 function yesNo(value) {
 	return value ? _('是') : _('否');
 }
 
-function pill(text, ok, warn) {
-	let color = '#374151';
-	let bg = '#f3f4f6';
-
-	if (ok) {
-		color = '#166534';
-		bg = '#dcfce7';
-	} else if (warn) {
-		color = '#9a3412';
-		bg = '#ffedd5';
-	} else {
-		color = '#991b1b';
-		bg = '#fee2e2';
-	}
-
-	return E('span', {
-		'style': 'display: inline-flex; align-items: center; min-height: 22px; padding: 0 .55rem; border-radius: 999px; font-size: 12px; font-weight: 700; color: %s; background: %s;'.format(color, bg)
-	}, text);
-}
-
 function checkRow(label, ok, detail, warn) {
-	return E('div', { 'style': 'display: grid; grid-template-columns: minmax(180px, 1fr) 90px minmax(0, 2fr); gap: .75rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid #eef0f3;' }, [
+	return E('div', { 'class': shinraMotion.softRowClass(), 'style': 'display: grid; grid-template-columns: minmax(180px, 1fr) 90px minmax(0, 2fr); gap: .75rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid #eef0f3;' }, [
 		E('div', { 'style': 'font-weight: 600;' }, label),
-		E('div', {}, pill(yesNo(ok), ok, warn)),
-		E('div', { 'style': mutedStyle() }, valueText(detail))
+		E('div', {}, shinraUi.pill(yesNo(ok), ok ? 'ok' : warn ? 'warning' : 'error')),
+		E('div', { 'style': shinraUi.mutedStyle() }, shinraUi.valueText(detail))
 	]);
 }
 
 function field(label, value) {
-	return E('div', { 'style': 'display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr); gap: .75rem; padding: .45rem 0; border-bottom: 1px solid #eef0f3;' }, [
+	return E('div', { 'class': shinraMotion.softRowClass(), 'style': 'display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr); gap: .75rem; padding: .45rem 0; border-bottom: 1px solid #eef0f3;' }, [
 		E('div', { 'style': 'color: #667;' }, label),
-		E('div', { 'style': 'overflow-wrap: anywhere;' }, valueText(value))
+		E('div', { 'style': 'overflow-wrap: anywhere;' }, shinraUi.valueText(value))
 	]);
 }
 
@@ -156,7 +105,7 @@ function tabButton(id, label) {
 	const active = activeTab === id;
 	return E('button', {
 		'type': 'button',
-		'class': 'btn cbi-button %s'.format(active ? 'cbi-button-apply' : 'cbi-button-neutral'),
+		'class': shinraMotion.buttonClass('btn cbi-button %s'.format(active ? 'cbi-button-apply' : 'cbi-button-neutral')),
 		'style': 'margin-right: .5rem; margin-bottom: .75rem;',
 		'click': function(ev) {
 			ev.preventDefault();
@@ -192,21 +141,74 @@ function controlplaneLogs(line) {
 	return line.indexOf('shinra') >= 0 || line.indexOf('rpcd') >= 0 || line.indexOf('uhttpd') >= 0;
 }
 
+function loadLogsLazy() {
+	if (pageResults.logs || logsLoading)
+		return;
+
+	logsLoading = true;
+	callLogsGet().catch(function(e) {
+		return { ok: false, message: _('日志加载失败'), detail: e.message || String(e) };
+	}).then(function(result) {
+		pageResults.logs = result;
+		logsLoading = false;
+		redraw();
+	}).catch(function() {
+		logsLoading = false;
+	});
+}
+
+function loadConnectivityLazy() {
+	if (pageResults.connectivity || connectivityLoading)
+		return;
+
+	connectivityLoading = true;
+	callConnectivityProbe().catch(function(e) {
+		return { ok: false, message: _('数据面诊断加载失败'), detail: e.message || String(e) };
+	}).then(function(result) {
+		pageResults.connectivity = result;
+		connectivityLoading = false;
+		redraw();
+	}).catch(function() {
+		connectivityLoading = false;
+	});
+}
+
+function ensureLazyLoads() {
+	window.setTimeout(function() {
+		loadLogsLazy();
+		if (activeTab === 'dataplane')
+			loadConnectivityLazy();
+	}, 0);
+}
+
 function dataplanePanel() {
-	const probe = dataOf(pageResults.connectivity);
+	const probe = shinraUi.dataOf(pageResults.connectivity);
 	const checks = probe.checks || {};
 	const readiness = probe.readiness || {};
 	const commands = probe.commands || {};
 	const runtime = probe.runtime || {};
-	const logs = dataOf(pageResults.logs);
+	const logs = shinraUi.dataOf(pageResults.logs);
+
+	if (!pageResults.connectivity)
+		return E('div', {}, [
+			E('div', { 'style': shinraUi.sectionStyle() }, [
+				shinraUi.sectionTitle(_('数据面观测')),
+				shinraUi.sectionDescription(_('数据面探测正在后台运行，控制面信息可以先查看。')),
+				E('div', { 'style': shinraUi.mutedStyle() }, _('正在获取 TUN、策略表和路由探测结果...'))
+			]),
+			E('div', { 'style': shinraUi.sectionStyle() }, [
+				shinraUi.sectionTitle(_('数据面日志')),
+				E('pre', { 'style': 'white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow-y: auto;' }, pageResults.logs ? logsText(logs.lines, dataplaneLogs) : _('日志正在后台加载...'))
+			])
+		]);
 
 	const ready = readiness.ready === true;
 	const routeDiagnostic = checks.route_default_uses_tun || checks.route_target_uses_tun;
 
 	return E('div', {}, [
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('数据面观测')),
-			sectionDescription(_('用于排查 TUN、auto_redirect、策略表和基础数据面状态。')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('数据面观测')),
+			shinraUi.sectionDescription(_('用于排查 TUN、auto_redirect、策略表和基础数据面状态。')),
 			checkRow(_('数据面就绪'), ready, ready ? _('ready') : (readiness.failed_check || '-')),
 			checkRow(_('Runtime 运行中'), !!checks.runtime_running, runtime.service_status || '-'),
 			checkRow(_('TUN 存在'), !!checks.tun_present, runtime.tun_name || readiness.tun_name || 'tun0'),
@@ -216,17 +218,17 @@ function dataplanePanel() {
 			checkRow(_('auto_redirect 规则可观测'), !!checks.ip_rule_has_fwmark_redirect, checks.auto_redirect_mode ? _('auto_redirect mode') : '-'),
 			checkRow(_('本机 route get 经 TUN'), !!routeDiagnostic, _('auto_redirect 模式下仅作诊断，不参与就绪判断'), true)
 		]),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('数据面命令输出')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('数据面命令输出')),
 			commandBlock('ip link show ' + (runtime.tun_name || readiness.tun_name || 'tun0'), commands.tun_link),
 			commandBlock('ip rule', commands.ip_rule),
 			commandBlock('ip route show table 2022', commands.table_2022),
 			commandBlock('ip route get 1.1.1.1', commands.route_1_1_1_1),
 			commandBlock('ip route get ' + (probe.probe_target || '1.1.1.1'), commands.route_target)
 		]),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('数据面日志')),
-			E('pre', { 'style': 'white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow-y: auto;' }, logsText(logs.lines, dataplaneLogs))
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('数据面日志')),
+			E('pre', { 'style': 'white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow-y: auto;' }, pageResults.logs ? logsText(logs.lines, dataplaneLogs) : _('日志正在后台加载...'))
 		])
 	]);
 }
@@ -250,15 +252,15 @@ function fileRows(files) {
 		if (!item)
 			return;
 
-		rows.push(E('div', { 'style': 'display: grid; grid-template-columns: minmax(130px, .8fr) minmax(0, 2fr) 90px; gap: .75rem; padding: .5rem 0; border-bottom: 1px solid #eef0f3; align-items: center;' }, [
+		rows.push(E('div', { 'class': shinraMotion.softRowClass(), 'style': 'display: grid; grid-template-columns: minmax(130px, .8fr) minmax(0, 2fr) 90px; gap: .75rem; padding: .5rem 0; border-bottom: 1px solid #eef0f3; align-items: center;' }, [
 			E('div', { 'style': 'font-weight: 600;' }, key),
 			E('div', { 'style': 'overflow-wrap: anywhere;' }, item.path || '-'),
-			E('div', { 'style': 'text-align: right;' }, pill(item.exists ? _('存在') : _('缺失'), !!item.exists))
+			E('div', { 'style': 'text-align: right;' }, shinraUi.pill(item.exists ? _('存在') : _('缺失'), item.exists ? 'ok' : 'error'))
 		]));
 	});
 
 	if (!rows.length)
-		rows.push(E('div', { 'style': mutedStyle() }, _('未观测到文件状态。')));
+		rows.push(E('div', { 'style': shinraUi.mutedStyle() }, _('未观测到文件状态。')));
 
 	return rows;
 }
@@ -279,19 +281,19 @@ function commandText() {
 }
 
 function controlplanePanel() {
-	const diagnostics = dataOf(pageResults.diagnostics);
+	const diagnostics = shinraUi.dataOf(pageResults.diagnostics);
 	const runtime = diagnostics.runtime || {};
 	const service = diagnostics.service || {};
 	const files = diagnostics.files || {};
-	const lastError = dataOf(pageResults.lastError);
-	const logs = dataOf(pageResults.logs);
-	const apiStatus = dataOf(pageResults.apiStatus);
+	const lastError = shinraUi.dataOf(pageResults.lastError);
+	const logs = shinraUi.dataOf(pageResults.logs);
+	const apiStatus = shinraUi.dataOf(pageResults.apiStatus);
 	const official = apiStatus.official_api || {};
 	const clash = apiStatus.clash_api || {};
 
 	return E('div', {}, [
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('API 状态')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('API 状态')),
 			field(_('Official API'), official.available ? _('可用') : _('不可用')),
 			field(_('Official API 地址'), official.api_url || '-'),
 			field(_('Official API 原因'), official.reason || '-'),
@@ -299,8 +301,8 @@ function controlplanePanel() {
 			field(_('Clash API 地址'), clash.external_controller || '-'),
 			field(_('Clash API 原因'), clash.reason || '-')
 		]),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('控制面状态')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('控制面状态')),
 			field(_('服务状态'), service.stdout || runtime.service_status || '-'),
 			field(_('服务状态码'), service.code),
 			field(_('Runtime 配置'), runtime.runtime_config_path || '-'),
@@ -308,8 +310,8 @@ function controlplanePanel() {
 			field(_('最近应用结果'), runtime.last_apply_result || '-'),
 			field(_('检查时间'), shinraTime.formatMaybeTime(runtime.checked_at))
 		]),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('控制面文件')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('控制面文件')),
 			E('div', { 'style': 'display: grid; grid-template-columns: minmax(130px, .8fr) minmax(0, 2fr) 90px; gap: .75rem; color: #667; font-size: 12px; padding-bottom: .4rem; border-bottom: 1px solid #dfe3e8;' }, [
 				E('div', {}, _('名称')),
 				E('div', {}, _('路径')),
@@ -317,28 +319,29 @@ function controlplanePanel() {
 			]),
 			E('div', {}, fileRows(files))
 		]),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('最近错误')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('最近错误')),
 			E('pre', { 'style': 'white-space: pre-wrap; overflow-wrap: anywhere; min-height: 2.5rem;' }, lastError.content || runtime.recent_error || _('无'))
 		]),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('验收命令')),
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('验收命令')),
 			E('textarea', {
 				'readonly': 'readonly',
 				'style': 'width: 100%; min-height: 180px; box-sizing: border-box; font-family: monospace; white-space: pre;'
 			}, commandText())
 		]),
-		E('div', { 'style': sectionStyle() }, [
-			sectionTitle(_('控制面日志')),
-			E('pre', { 'style': 'white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow-y: auto;' }, logsText(logs.lines, controlplaneLogs))
+		E('div', { 'style': shinraUi.sectionStyle() }, [
+			shinraUi.sectionTitle(_('控制面日志')),
+			E('pre', { 'style': 'white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow-y: auto;' }, pageResults.logs ? logsText(logs.lines, controlplaneLogs) : _('日志正在后台加载...'))
 		])
 	]);
 }
 
 function renderPage() {
 	const errorPanel = loadErrorPanel();
+	shinraMotion.inject();
 	const children = [
-		pageHeader(_('网络诊断'), _('用于排查控制面任务和数据面接管。高层摘要集中在概览页。')),
+		shinraUi.pageHeader(_('网络诊断'), _('用于排查控制面任务和数据面接管。高层摘要集中在概览页。')),
 		E('div', { 'style': 'display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: 0 0 .75rem;' }, [
 			tabButton('dataplane', _('数据面')),
 			tabButton('controlplane', _('控制面'))
@@ -349,6 +352,7 @@ function renderPage() {
 		children.push(errorPanel);
 
 	children.push(activeTab === 'dataplane' ? dataplanePanel() : controlplanePanel());
+	ensureLazyLoads();
 
 	return E('div', { 'id': 'shinra-diagnostics-root', 'class': 'cbi-map' }, [
 		E('div', {}, children)
@@ -366,22 +370,20 @@ return view.extend({
 		return Promise.all([
 			callApiStatus().catch(function(e) { return { ok: false, message: _('API 状态加载失败'), detail: e.message || String(e) }; }),
 			callDiagnosticsGet().catch(function(e) { return { ok: false, message: _('控制面诊断加载失败'), detail: e.message || String(e) }; }),
-			callConnectivityProbe().catch(function(e) { return { ok: false, message: _('数据面诊断加载失败'), detail: e.message || String(e) }; }),
-			callLastErrorGet().catch(function(e) { return { ok: false, message: _('最近错误加载失败'), detail: e.message || String(e) }; }),
-			callLogsGet().catch(function(e) { return { ok: false, message: _('日志加载失败'), detail: e.message || String(e) }; })
+			callLastErrorGet().catch(function(e) { return { ok: false, message: _('最近错误加载失败'), detail: e.message || String(e) }; })
 		]).then(function(results) {
 			return {
 				apiStatus: results[0],
 				diagnostics: results[1],
-				connectivity: results[2],
-				lastError: results[3],
-				logs: results[4]
+				lastError: results[2]
 			};
 		});
 	},
 
 	render: function(results) {
 		pageResults = results || {};
+		logsLoading = false;
+		connectivityLoading = false;
 		return renderPage();
 	},
 
