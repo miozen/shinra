@@ -10,7 +10,7 @@ import { Success, Fail } from 'shinra.core.result';
 import { ERR } from 'shinra.core.error';
 import { read_optional_text, write_text_atomic, parse_json_object, request_content, request_keys, json_stringify_pretty } from 'shinra.core.utils';
 
-const DEFAULT_DASHBOARD_DOWNLOAD_URL = "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip";
+const DEFAULT_DASHBOARD_DOWNLOAD_URL = "https://github.com/Zephyruso/zashboard/releases/latest/download/dist-sarasa-only.zip";
 
 function default_dashboard_source() {
 	return {
