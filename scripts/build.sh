@@ -170,8 +170,9 @@ if [ -z "${IPKG_INSTROOT:-}" ]; then
 		/usr/libexec/shinra-ensure-auto-task || true
 	fi
 
-	/etc/init.d/rpcd restart 2>/dev/null || true
-	/etc/init.d/uhttpd restart 2>/dev/null || true
+	rm -f /tmp/luci-indexcache.* 2>/dev/null || true
+	rm -rf /tmp/luci-modulecache/ 2>/dev/null || true
+	killall -HUP rpcd 2>/dev/null || true
 fi
 
 exit 0
@@ -191,8 +192,9 @@ if [ -z "${IPKG_INSTROOT:-}" ]; then
 		/usr/libexec/shinra-ensure-auto-task || true
 	fi
 
-	/etc/init.d/rpcd restart 2>/dev/null || true
-	/etc/init.d/uhttpd restart 2>/dev/null || true
+	rm -f /tmp/luci-indexcache.* 2>/dev/null || true
+	rm -rf /tmp/luci-modulecache/ 2>/dev/null || true
+	killall -HUP rpcd 2>/dev/null || true
 fi
 
 exit 0
