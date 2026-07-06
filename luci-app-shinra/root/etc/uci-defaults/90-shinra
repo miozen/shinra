@@ -17,6 +17,10 @@ chmod 0755 /usr/libexec/shinra-auto-task 2>/dev/null || true
 chmod 0755 /usr/libexec/shinra-runner 2>/dev/null || true
 chmod 0755 /usr/libexec/shinra-ruleset-sync-job 2>/dev/null || true
 
+if [ -x /etc/init.d/shinra ]; then
+	/etc/init.d/shinra enable 2>/dev/null || true
+fi
+
 copy_default() {
 	local src="$1"
 	local dst="$2"
