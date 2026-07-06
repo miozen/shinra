@@ -238,6 +238,9 @@ build_apk() {
 		fail "apk not found. Install apk-tools to build APK packages."
 	fi
 
+	local apk_arch="$pkg_arch"
+	[ "$apk_arch" = "all" ] && apk_arch="noarch"
+
 	local output="${ROOT_DIR}/${pkg_name}_${apk_version}_${pkg_arch}.apk"
 	local sign_args=()
 
@@ -253,7 +256,7 @@ build_apk() {
 		--info "name:${pkg_name}" \
 		--info "version:${apk_version}" \
 		--info "description:Shinra sing-box TUN control panel for LuCI." \
-		--info "arch:${pkg_arch}" \
+		--info "arch:${apk_arch}" \
 		--info "origin:https://github.com/Vonzhen/shinra" \
 		--info "url:" \
 		--info "maintainer:Von <noreply@example.com>" \
