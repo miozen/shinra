@@ -111,6 +111,10 @@ if [ -z "${IPKG_INSTROOT:-}" ]; then
 		/usr/libexec/shinra-ensure-auto-task || true
 	fi
 
+	if [ -x /etc/init.d/shinra ]; then
+		/etc/init.d/shinra enable 2>/dev/null || true
+	fi
+
 	/etc/init.d/rpcd restart 2>/dev/null || true
 	/etc/init.d/uhttpd restart 2>/dev/null || true
 fi
@@ -124,6 +128,7 @@ cat > "${CONTROL_DIR}/prerm" <<'EOF'
 set -e
 
 if [ -z "${IPKG_INSTROOT:-}" ]; then
+	/etc/init.d/shinra disable 2>/dev/null || true
 	/etc/init.d/shinra stop 2>/dev/null || true
 
 	if [ -f /etc/crontabs/root ]; then
@@ -170,6 +175,10 @@ if [ -z "${IPKG_INSTROOT:-}" ]; then
 		/usr/libexec/shinra-ensure-auto-task || true
 	fi
 
+	if [ -x /etc/init.d/shinra ]; then
+		/etc/init.d/shinra enable 2>/dev/null || true
+	fi
+
 	rm -f /tmp/luci-indexcache.* 2>/dev/null || true
 	rm -rf /tmp/luci-modulecache/ 2>/dev/null || true
 	killall -HUP rpcd 2>/dev/null || true
@@ -192,6 +201,10 @@ if [ -z "${IPKG_INSTROOT:-}" ]; then
 		/usr/libexec/shinra-ensure-auto-task || true
 	fi
 
+	if [ -x /etc/init.d/shinra ]; then
+		/etc/init.d/shinra enable 2>/dev/null || true
+	fi
+
 	rm -f /tmp/luci-indexcache.* 2>/dev/null || true
 	rm -rf /tmp/luci-modulecache/ 2>/dev/null || true
 	killall -HUP rpcd 2>/dev/null || true
@@ -204,6 +217,7 @@ EOF
 #!/bin/sh
 
 if [ -z "${IPKG_INSTROOT:-}" ]; then
+	/etc/init.d/shinra disable 2>/dev/null || true
 	/etc/init.d/shinra stop 2>/dev/null || true
 
 	if [ -f /etc/crontabs/root ]; then
