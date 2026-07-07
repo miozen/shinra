@@ -69,7 +69,7 @@ const DEFAULT_POLICY = {
 	update_hour: 4,
 	fetch_strategy: 'direct',
 	repositories: {
-		private: '',
+		private: 'https://testingcf.jsdelivr.net/gh/Vonzhen/sing-box-rulesets@master/rules',
 		public: 'https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing'
 	}
 };
