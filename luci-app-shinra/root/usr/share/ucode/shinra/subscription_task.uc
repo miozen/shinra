@@ -8,11 +8,20 @@ import { mkdir, stat } from 'fs';
 import { PATH } from 'shinra.core.constants';
 import { Success, Fail } from 'shinra.core.result';
 import { ERR } from 'shinra.core.error';
-import { validate_refresh_strategy } from 'shinra.subscription_policy';
+import { validate_refresh_strategy } from 'shinra.subscription_policy_schema';
 import { task_path, read_task, patch_task, running_task } from 'shinra.core.task';
 
 const SUBSCRIPTION_REFRESH_TASK = "subscription.refresh";
 const SUBSCRIPTION_REFRESH_TRACE = "shinra-runner-subscription-refresh";
+
+function subscription_refresh_task_meta() {
+	return {
+		task_type: SUBSCRIPTION_REFRESH_TASK,
+		display_name: "订阅刷新任务",
+		category: "background_task",
+		status_path: task_path(SUBSCRIPTION_REFRESH_TASK)
+	};
+}
 
 function subscription_refresh_task_enabled(trace_id) {
 	return trace_id == SUBSCRIPTION_REFRESH_TRACE;
@@ -112,7 +121,8 @@ function subscriptions_refresh_status(trace_id, req) {
 		return Success({
 			path: path,
 			exists: path_exists(path),
-			task: read_task(SUBSCRIPTION_REFRESH_TASK)
+			task: read_task(SUBSCRIPTION_REFRESH_TASK),
+			task_meta: subscription_refresh_task_meta()
 		}, 200, trace_id, "Subscription refresh task status loaded");
 	} catch (e) {
 		let err = "" + e;
@@ -135,6 +145,7 @@ function subscriptions_refresh_start(trace_id, req) {
 			return Success({
 				path: path,
 				task: task,
+				task_meta: subscription_refresh_task_meta(),
 				started: false,
 				reason: "lock_present"
 			}, 200, trace_id, "Subscription refresh task is already running");
@@ -157,6 +168,7 @@ function subscriptions_refresh_start(trace_id, req) {
 		return Success({
 			path: path,
 			task: task,
+			task_meta: subscription_refresh_task_meta(),
 			started: true
 		}, 202, trace_id, "Subscription refresh task started");
 	} catch (e) {
@@ -184,6 +196,7 @@ function subscription_refresh_source_start(trace_id, req) {
 			return Success({
 				path: path,
 				task: task,
+				task_meta: subscription_refresh_task_meta(),
 				started: false,
 				reason: "lock_present"
 			}, 200, trace_id, "Subscription refresh task is already running");
@@ -209,6 +222,7 @@ function subscription_refresh_source_start(trace_id, req) {
 		return Success({
 			path: path,
 			task: task,
+			task_meta: subscription_refresh_task_meta(),
 			started: true,
 			source_id: source_id
 		}, 202, trace_id, "Subscription source refresh task started");

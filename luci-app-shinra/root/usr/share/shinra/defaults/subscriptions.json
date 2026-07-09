@@ -14,22 +14,22 @@
     "interval": "3m",
     "tolerance": 150
   },
+  "rate_filter": {
+    "enabled": true,
+    "threshold": 1.5,
+    "operator": ">=",
+    "scope": "matched_regions",
+    "matched_regions": ["HK", "TW", "SG", "JP", "US"],
+    "unmatched_action": "keep",
+    "matched_high_rate_action": "drop",
+    "patterns": ["number_x"],
+    "include_integer_one": false
+  },
   "subscription_update": {
     "auto_update": false,
     "update_hour": 3,
     "strategy": "saved",
     "run_on_boot": false
-  },
-  "ruleset": {
-    "mode": "auto",
-    "fetch_strategy": "direct",
-    "auto_update": false,
-    "auto_apply_after_update": false,
-    "update_hour": 4,
-    "repositories": {
-      "private": "",
-      "public": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing"
-    }
   },
   "sources": []
 }

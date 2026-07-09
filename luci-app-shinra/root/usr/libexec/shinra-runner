@@ -102,5 +102,5 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-ucode -e 'import { runner_execute } from "shinra.core.runner"; let code = runner_execute("'"$TASK_TYPE"'", "'"$TARGET"'", "'"$TRACE_ID"'", { strategy: "'"$STRATEGY"'", tag: "'"$TAG"'", source_id: "'"$SOURCE_ID"'", notify_intent: '"$NOTIFY_INTENT"', scheduler_intent: '"$AUTO_APPLY_INTENT"', auto_apply_intent: '"$AUTO_APPLY_INTENT"' }); if (code != 0) die("runner failed: " + code);'
+ucode -e 'import { runner_execute } from "shinra.runner"; let code = runner_execute("'"$TASK_TYPE"'", "'"$TARGET"'", "'"$TRACE_ID"'", { strategy: "'"$STRATEGY"'", tag: "'"$TAG"'", source_id: "'"$SOURCE_ID"'", notify_intent: '"$NOTIFY_INTENT"', scheduler_intent: '"$AUTO_APPLY_INTENT"', auto_apply_intent: '"$AUTO_APPLY_INTENT"' }); if (code != 0) die("runner failed: " + code);'
 exit "$?"

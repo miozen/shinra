@@ -9,7 +9,7 @@ import { ERR } from 'shinra.core.error';
 import { PATH } from 'shinra.core.constants';
 import { read_optional_text, write_text_atomic, write_runtime_text_atomic, parse_json_object, request_content, request_keys, json_escape, json_stringify, ExecResult } from 'shinra.core.utils';
 import { fetch_text } from 'shinra.resource_fetch';
-import { validate_fetch_strategy } from 'shinra.subscription_policy';
+import { validate_fetch_strategy } from 'shinra.subscription_policy_schema';
 
 const TELEGRAM_MAX_TEXT = 3900;
 
@@ -184,9 +184,11 @@ function task_title(settings, task_type, status) {
 	let name = settings.telegram.location_name || "Shinra";
 	let task = "任务通知";
 	if (task_type == "subscriptions_refresh" || task_type == "subscription.refresh")
-		task = "订阅管理";
+		task = "订阅刷新任务";
 	else if (task_type == "ruleset_download_required" || task_type == "ruleset.sync")
-		task = "规则集管理";
+		task = "规则集同步任务";
+	else if (task_type == "ruleset_download_one" || task_type == "ruleset.download_one")
+		task = "单个规则集下载任务";
 	else if (task_type == "telegram_test")
 		task = "Telegram 测试";
 

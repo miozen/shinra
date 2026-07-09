@@ -93,6 +93,16 @@ function dataOf(result) {
 	return {};
 }
 
+function taskMetaOf(result) {
+	const data = dataOf(result);
+	return data.task_meta && typeof data.task_meta === 'object' ? data.task_meta : {};
+}
+
+function taskDisplayName(result, fallback) {
+	const meta = taskMetaOf(result);
+	return meta.display_name || fallback || _('后台任务');
+}
+
 function normalizePolicy(input) {
 	input = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
 	const repositories = input.repositories && typeof input.repositories === 'object' && !Array.isArray(input.repositories) ? input.repositories : {};
@@ -231,40 +241,42 @@ function rulesetTaskCounts(task) {
 	return text;
 }
 
-function rulesetTaskStatusText(task) {
+function rulesetTaskStatusText(task, taskName) {
 	const status = task.status || '-';
 	const counts = rulesetTaskCounts(task);
 	const message = task.message || '';
+	taskName = taskName || _('规则集同步任务');
 
 	if (status === 'starting')
-		return _('规则集同步已排队。');
+		return _('%s已排队。').format(taskName);
 	if (status === 'running')
-		return _('规则集正在同步：%s').format(counts);
+		return _('%s正在运行：%s').format(taskName, counts);
 	if (status === 'success')
-		return _('规则集同步完成：%s%s').format(counts, message ? ' - ' + message : '');
+		return _('%s完成：%s%s').format(taskName, counts, message ? ' - ' + message : '');
 	if (status === 'partial')
-		return _('规则集部分同步完成：%s%s').format(counts, message ? ' - ' + message : '');
+		return _('%s部分完成：%s%s').format(taskName, counts, message ? ' - ' + message : '');
 	if (status === 'failed')
-		return _('规则集同步失败：%s').format(message || counts);
+		return _('%s失败：%s').format(taskName, message || counts);
 
-	return message || _('未观测到规则集同步状态。');
+	return message || _('未观测到%s状态。').format(taskName);
 }
 
-function rulesetDownloadOneStatusText(task) {
+function rulesetDownloadOneStatusText(task, taskName) {
 	const meta = task.meta && typeof task.meta === 'object' ? task.meta : {};
 	const tag = task.current_item || meta.tag || downloadingTag || '-';
 	const status = task.status || '-';
+	taskName = taskName || _('单个规则集下载任务');
 
 	if (status === 'starting')
-		return _('规则集 %s 下载已排队。').format(tag);
+		return _('%s已排队：%s。').format(taskName, tag);
 	if (status === 'running')
-		return _('正在下载规则集 %s。').format(tag);
+		return _('%s正在运行：%s。').format(taskName, tag);
 	if (status === 'success')
-		return _('规则集 %s 已下载。').format(tag);
+		return _('%s完成：%s。').format(taskName, tag);
 	if (status === 'failed')
-		return _('规则集 %s 下载失败：%s').format(tag, task.last_error || task.message || '-');
+		return _('%s失败：%s，%s').format(taskName, tag, task.last_error || task.message || '-');
 
-	return task.message || _('未观测到规则集下载状态。');
+	return task.message || _('未观测到%s状态。').format(taskName);
 }
 
 function updatePolicyFromFields() {
@@ -632,17 +644,18 @@ function pollRulesetSync(token, attempt) {
 			return statusResult;
 		notifyFailure(statusResult);
 		if (!statusResult || !statusResult.ok) {
-			setStatus(_('读取规则集同步状态失败。'), false);
+			setStatus(_('读取规则集同步任务状态失败。'), false);
 			return refreshAll();
 		}
 
 		const task = rulesetTaskFrom(statusResult);
+		const taskName = taskDisplayName(statusResult, _('规则集同步任务'));
 		const status = task.status || '';
 
 		if (status === 'starting' || status === 'running') {
-			setStatus(rulesetTaskStatusText(task), true);
+			setStatus(rulesetTaskStatusText(task, taskName), true);
 			if (attempt >= 180) {
-				setStatus(_('规则集同步仍在后台运行。稍后返回可查看结果。'), true);
+				setStatus(_('%s仍在后台运行。稍后返回可查看结果。').format(taskName), true);
 				return refreshAll();
 			}
 
@@ -652,7 +665,7 @@ function pollRulesetSync(token, attempt) {
 		}
 
 		const ok = status === 'success' || status === 'partial';
-		setStatus(rulesetTaskStatusText(task), ok && Number(task.failed_count || 0) === 0);
+		setStatus(rulesetTaskStatusText(task, taskName), ok && Number(task.failed_count || 0) === 0);
 		return refreshAll();
 	}).catch(function(error) {
 		if (token !== actionToken)
@@ -668,18 +681,19 @@ function pollRulesetDownloadOne(token, attempt) {
 			return statusResult;
 		notifyFailure(statusResult);
 		if (!statusResult || !statusResult.ok) {
-			setStatus(_('读取规则集下载状态失败。'), false);
+			setStatus(_('读取单个规则集下载任务状态失败。'), false);
 			downloadingTag = '';
 			return refreshAll();
 		}
 
 		const task = rulesetTaskFrom(statusResult);
+		const taskName = taskDisplayName(statusResult, _('单个规则集下载任务'));
 		const status = task.status || '';
 
 		if (status === 'starting' || status === 'running') {
-			setStatus(rulesetDownloadOneStatusText(task), true);
+			setStatus(rulesetDownloadOneStatusText(task, taskName), true);
 			if (attempt >= 120) {
-				setStatus(_('规则集下载仍在后台运行。稍后返回可查看结果。'), true);
+				setStatus(_('%s仍在后台运行。稍后返回可查看结果。').format(taskName), true);
 				downloadingTag = '';
 				return refreshAll();
 			}
@@ -690,7 +704,7 @@ function pollRulesetDownloadOne(token, attempt) {
 		}
 
 		downloadingTag = '';
-		setStatus(rulesetDownloadOneStatusText(task), status === 'success');
+		setStatus(rulesetDownloadOneStatusText(task, taskName), status === 'success');
 		return refreshAll();
 	}).catch(function(error) {
 		if (token !== actionToken)
@@ -705,7 +719,7 @@ function downloadOneRuleset(tag) {
 	const token = ++actionToken;
 	downloadingTag = tag || '';
 	rulesetListOpen = true;
-	setStatus(_('正在启动规则集 %s 下载...').format(downloadingTag || '-'), true);
+	setStatus(_('正在启动单个规则集下载任务：%s...').format(downloadingTag || '-'), true);
 	redraw();
 
 	return callRulesetDownloadOneStart(tag).then(function(startResult) {
@@ -714,12 +728,12 @@ function downloadOneRuleset(tag) {
 		notifyFailure(startResult);
 		if (!startResult || !startResult.ok) {
 			downloadingTag = '';
-			setStatus(_('启动规则集下载失败。'), false);
+			setStatus(_('启动单个规则集下载任务失败。'), false);
 			return refreshAll();
 		}
 
 		const task = rulesetTaskFrom(startResult);
-		setStatus(rulesetDownloadOneStatusText(task), true);
+		setStatus(rulesetDownloadOneStatusText(task, taskDisplayName(startResult, _('单个规则集下载任务'))), true);
 		return pollRulesetDownloadOne(token, 0);
 	}).catch(function(error) {
 		if (token !== actionToken)
@@ -733,7 +747,7 @@ function downloadOneRuleset(tag) {
 function syncRulesets() {
 	const token = ++actionToken;
 	updatePolicyFromFields();
-	setStatus(_('正在保存设置并启动规则集同步...'), true);
+	setStatus(_('正在保存设置并启动规则集同步任务...'), true);
 
 	return callRulesetPolicySave(JSON.stringify(policy)).then(function(saveResult) {
 		if (token !== actionToken)
@@ -751,12 +765,12 @@ function syncRulesets() {
 			return startResult;
 		notifyFailure(startResult);
 		if (!startResult || !startResult.ok) {
-			setStatus(_('启动规则集同步失败。'), false);
+			setStatus(_('启动规则集同步任务失败。'), false);
 			return refreshAll();
 		}
 
 		const task = rulesetTaskFrom(startResult);
-		setStatus(rulesetTaskStatusText(task), true);
+		setStatus(rulesetTaskStatusText(task, taskDisplayName(startResult, _('规则集同步任务'))), true);
 		return pollRulesetSync(token, 0);
 	}).catch(function(error) {
 		if (token !== actionToken)

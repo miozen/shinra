@@ -10,7 +10,7 @@ import { ERR } from 'shinra.core.error';
 import { lock_acquire, lock_release } from 'shinra.core.lock';
 import { read_text, read_optional_text, write_text_atomic, parse_json_object, request_content, request_keys, json_stringify, ExecResult } from 'shinra.core.utils';
 import { fetch_text } from 'shinra.resource_fetch';
-import { validate_fetch_strategy } from 'shinra.subscription_policy';
+import { validate_fetch_strategy } from 'shinra.subscription_policy_schema';
 
 function validate_profile_object(profile) {
 	if (type(profile.inbounds) != "array")
@@ -53,7 +53,7 @@ function validate_profile_content(content) {
 function default_profile_source() {
 	return {
 		schema_version: 1,
-		url: "https://testingcf.jsdelivr.net/gh/Vonzhen/shinra@master/profiles/main-profile.json",
+		url: "https://testingcf.jsdelivr.net/gh/Vonzhen/singbox-profiles@master/profiles/main-profile.json",
 		fetch_strategy: "direct",
 		updated_at: ""
 	};

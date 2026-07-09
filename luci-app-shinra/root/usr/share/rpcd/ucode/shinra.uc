@@ -18,8 +18,9 @@ import { connectivity_probe } from 'shinra.connectivity';
 import { ruleset_inventory, ruleset_required_inventory, ruleset_policy_get, ruleset_policy_save, ruleset_download_required, ruleset_download_required_start, ruleset_download_required_status, ruleset_artifact_status, ruleset_download_one_start, ruleset_download_one_status } from 'shinra.ruleset';
 import { notify_settings_get, notify_settings_save, notify_test_telegram } from 'shinra.notify';
 import { auto_task_status_get } from 'shinra.auto_task';
-import { scheduler_status, scheduler_tick } from 'shinra.core.scheduler';
+import { scheduler_status, scheduler_tick } from 'shinra.scheduler';
 import { net_fetch_test } from 'shinra.resource_fetch';
+import { overview_status } from 'shinra.overview_status';
 
 function request_args(req) {
 	try {
@@ -52,6 +53,14 @@ const methods = {
 					runtime_ready: false
 				}, 200, trace_id, "Stage 1 skeleton status");
 			}, req);
+		}
+	},
+
+	overview_status: {
+		args: {},
+		call: function(req) {
+			let trace_id = gen_trace_id();
+			return gateway(trace_id, overview_status, req);
 		}
 	},
 

@@ -4,5 +4,5 @@ set -u
 
 TRACE_ID="shinra-scheduler-auto-task"
 
-ucode -e 'import { scheduler_tick } from "shinra.core.scheduler"; let result = scheduler_tick("'"$TRACE_ID"'", {}); if (!result || result.ok != true) die(result ? (result.message + ": " + result.detail) : "scheduler failed");'
+ucode -e 'import { scheduler_tick } from "shinra.scheduler"; let result = scheduler_tick("'"$TRACE_ID"'", {}); if (!result || result.ok != true) die(result ? (result.message + ": " + result.detail) : "scheduler failed");'
 exit "$?"

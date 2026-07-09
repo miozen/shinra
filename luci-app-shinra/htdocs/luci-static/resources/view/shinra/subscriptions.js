@@ -66,16 +66,16 @@ const DEFAULT_URLTEST_PARAMS = {
 	interval: '3m',
 	tolerance: 150
 };
-
-const DEFAULT_RULESET_POLICY = {
-	mode: 'auto',
-	auto_update: false,
-	auto_apply_after_update: false,
-	update_hour: 4,
-	repositories: {
-		private: '',
-		public: 'https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing'
-	}
+const DEFAULT_RATE_FILTER = {
+	enabled: true,
+	threshold: 1.5,
+	operator: '>=',
+	scope: 'matched_regions',
+	matched_regions: [ 'HK', 'TW', 'SG', 'JP', 'US' ],
+	unmatched_action: 'keep',
+	matched_high_rate_action: 'drop',
+	patterns: [ 'number_x' ],
+	include_integer_one: false
 };
 
 const DEFAULT_SUBSCRIPTION_UPDATE = {
@@ -126,6 +126,39 @@ function regionKeys(policy) {
 	return DEFAULT_REGION_KEYS.slice();
 }
 
+function normalizeStringChoice(value, choices, fallback) {
+	return choices.indexOf(value) >= 0 ? value : fallback;
+}
+
+function normalizeRateFilter(raw, keys) {
+	raw = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+	keys = Array.isArray(keys) ? keys : DEFAULT_REGION_KEYS;
+
+	let threshold = raw.threshold != null ? Number(raw.threshold) : DEFAULT_RATE_FILTER.threshold;
+	if (!Number.isFinite(threshold) || threshold < 0)
+		threshold = DEFAULT_RATE_FILTER.threshold;
+
+	let matchedRegions = Array.isArray(raw.matched_regions) ? raw.matched_regions.filter(function(region) {
+		return keys.indexOf(region) >= 0;
+	}) : DEFAULT_RATE_FILTER.matched_regions.slice();
+
+	let patterns = Array.isArray(raw.patterns) ? raw.patterns.filter(function(pattern) {
+		return [ 'number_x', 'number_times_cn' ].indexOf(pattern) >= 0;
+	}) : DEFAULT_RATE_FILTER.patterns.slice();
+
+	return {
+		enabled: raw.enabled === false ? false : true,
+		threshold: threshold,
+		operator: normalizeStringChoice(raw.operator, [ '>=', '>' ], DEFAULT_RATE_FILTER.operator),
+		scope: normalizeStringChoice(raw.scope, [ 'matched_regions', 'all', 'none' ], DEFAULT_RATE_FILTER.scope),
+		matched_regions: matchedRegions,
+		unmatched_action: normalizeStringChoice(raw.unmatched_action, [ 'keep', 'drop' ], DEFAULT_RATE_FILTER.unmatched_action),
+		matched_high_rate_action: normalizeStringChoice(raw.matched_high_rate_action, [ 'drop', 'raw' ], DEFAULT_RATE_FILTER.matched_high_rate_action),
+		patterns: patterns,
+		include_integer_one: raw.include_integer_one === true
+	};
+}
+
 function normalizePolicy(raw) {
 	let policy = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
 	let regionKeywords = {};
@@ -164,8 +197,8 @@ function normalizePolicy(raw) {
 			interval: policy.urltest_params && policy.urltest_params.interval || DEFAULT_URLTEST_PARAMS.interval,
 			tolerance: policy.urltest_params && policy.urltest_params.tolerance != null ? Number(policy.urltest_params.tolerance) : DEFAULT_URLTEST_PARAMS.tolerance
 		},
+		rate_filter: normalizeRateFilter(policy.rate_filter, keys),
 		subscription_update: normalizeSubscriptionUpdate(policy.subscription_update),
-		ruleset: normalizeRulesetPolicy(policy.ruleset),
 		sources: sources
 	};
 }
@@ -183,27 +216,6 @@ function normalizeSubscriptionUpdate(raw) {
 		update_hour: updateHour,
 		strategy: strategy,
 		run_on_boot: raw.run_on_boot === true
-	};
-}
-
-function normalizeRulesetPolicy(raw) {
-	raw = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
-	let repositories = raw.repositories && typeof raw.repositories === 'object' && !Array.isArray(raw.repositories) ? raw.repositories : {};
-	let mode = [ 'remote', 'auto', 'local' ].indexOf(raw.mode) >= 0 ? raw.mode : DEFAULT_RULESET_POLICY.mode;
-	let updateHour = raw.update_hour != null ? Number(raw.update_hour) : DEFAULT_RULESET_POLICY.update_hour;
-
-	if (!Number.isFinite(updateHour) || updateHour < 0 || updateHour > 23)
-		updateHour = DEFAULT_RULESET_POLICY.update_hour;
-
-	return {
-		mode: mode,
-		auto_update: raw.auto_update === true,
-		auto_apply_after_update: raw.auto_apply_after_update === true,
-		update_hour: updateHour,
-		repositories: {
-			private: typeof repositories.private === 'string' ? repositories.private : DEFAULT_RULESET_POLICY.repositories.private,
-			public: typeof repositories.public === 'string' && repositories.public !== '' ? repositories.public : DEFAULT_RULESET_POLICY.repositories.public
-		}
 	};
 }
 
@@ -233,6 +245,16 @@ function checked(id) {
 
 function setStatus(message, ok) {
 	shinraUi.paintStatus('shinra-subscriptions-status', message || '', ok ? 'ok' : 'error');
+}
+
+function taskMetaOf(result) {
+	const data = result && result.ok && result.data ? result.data : {};
+	return data.task_meta && typeof data.task_meta === 'object' ? data.task_meta : {};
+}
+
+function taskDisplayName(result, fallback) {
+	const meta = taskMetaOf(result);
+	return meta.display_name || fallback || _('后台任务');
 }
 
 function setTestReport(target, result) {
@@ -474,6 +496,65 @@ function policySettings(policy) {
 				'type': 'number',
 				'style': 'width: 100%;',
 				'value': policy.urltest_params.tolerance
+			})),
+			field(_('倍率过滤'), shinraUi.checkboxInput({
+				'id': 'shinra-rate-filter-enabled',
+				'checked': policy.rate_filter.enabled ? 'checked' : null
+			})),
+			field(_('倍率阈值'), E('input', {
+				'id': 'shinra-rate-filter-threshold',
+				'class': 'cbi-input-text',
+				'type': 'number',
+				'step': '0.1',
+				'min': '0',
+				'style': 'width: 100%;',
+				'value': policy.rate_filter.threshold
+			})),
+			field(_('比较方式'), E('select', { 'id': 'shinra-rate-filter-operator', 'class': 'cbi-input-select', 'style': 'width: 100%;' }, [
+				E('option', { 'value': '>=', 'selected': policy.rate_filter.operator === '>=' ? 'selected' : null }, '>='),
+				E('option', { 'value': '>', 'selected': policy.rate_filter.operator === '>' ? 'selected' : null }, '>')
+			])),
+			field(_('作用范围'), E('select', { 'id': 'shinra-rate-filter-scope', 'class': 'cbi-input-select', 'style': 'width: 100%;' }, [
+				E('option', { 'value': 'matched_regions', 'selected': policy.rate_filter.scope === 'matched_regions' ? 'selected' : null }, _('匹配区域')),
+				E('option', { 'value': 'all', 'selected': policy.rate_filter.scope === 'all' ? 'selected' : null }, _('全部节点')),
+				E('option', { 'value': 'none', 'selected': policy.rate_filter.scope === 'none' ? 'selected' : null }, _('停用'))
+			])),
+			field(_('匹配区域'), E('div', {}, keys.map(function(region) {
+				return E('label', { 'style': 'display: inline-flex; align-items: center; gap: .25rem; margin: 0 .75rem .35rem 0;' }, [
+					shinraUi.checkboxInput({
+						'id': 'shinra-rate-filter-region-' + region,
+						'checked': policy.rate_filter.matched_regions.indexOf(region) >= 0 ? 'checked' : null
+					}),
+					E('span', {}, region)
+				]);
+			}))),
+			field(_('匹配区域动作'), E('select', { 'id': 'shinra-rate-filter-high-action', 'class': 'cbi-input-select', 'style': 'width: 100%;' }, [
+				E('option', { 'value': 'drop', 'selected': policy.rate_filter.matched_high_rate_action === 'drop' ? 'selected' : null }, _('完全丢弃')),
+				E('option', { 'value': 'raw', 'selected': policy.rate_filter.matched_high_rate_action === 'raw' ? 'selected' : null }, _('仅排除 URLTest'))
+			])),
+			field(_('未匹配区域动作'), E('select', { 'id': 'shinra-rate-filter-unmatched-action', 'class': 'cbi-input-select', 'style': 'width: 100%;' }, [
+				E('option', { 'value': 'keep', 'selected': policy.rate_filter.unmatched_action === 'keep' ? 'selected' : null }, _('保留')),
+				E('option', { 'value': 'drop', 'selected': policy.rate_filter.unmatched_action === 'drop' ? 'selected' : null }, _('丢弃'))
+			])),
+			field(_('识别格式'), E('div', {}, [
+				E('label', { 'style': 'display: inline-flex; align-items: center; gap: .25rem; margin: 0 .75rem .35rem 0;' }, [
+					shinraUi.checkboxInput({
+						'id': 'shinra-rate-filter-pattern-number-x',
+						'checked': policy.rate_filter.patterns.indexOf('number_x') >= 0 ? 'checked' : null
+					}),
+					E('span', {}, '1.5x / 2x')
+				]),
+				E('label', { 'style': 'display: inline-flex; align-items: center; gap: .25rem; margin: 0 .75rem .35rem 0;' }, [
+					shinraUi.checkboxInput({
+						'id': 'shinra-rate-filter-pattern-number-cn',
+						'checked': policy.rate_filter.patterns.indexOf('number_times_cn') >= 0 ? 'checked' : null
+					}),
+					E('span', {}, '1.5倍 / 2倍')
+				])
+			])),
+			field(_('识别 1x'), shinraUi.checkboxInput({
+				'id': 'shinra-rate-filter-include-one',
+				'checked': policy.rate_filter.include_integer_one ? 'checked' : null
 			}))
 		])
 	]);
@@ -597,9 +678,9 @@ function subscriptionUpdateSettings(policy) {
 		]),
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('边界')),
-			sectionDescription(_('这里只保存自动刷新策略。调度器会按该策略触发自动任务。')),
+			sectionDescription(_('这里只保存自动刷新策略。调度器会按该策略触发后台任务。')),
 			E('div', { 'style': 'color: #667; font-size: 12px; line-height: 1.6;' }, [
-				_('调度目标：subscription.refresh。'),
+				_('调度任务：订阅刷新任务（subscription.refresh）。'),
 				E('br'),
 				_('手动刷新节点快照保持不变，不会发送 Telegram 通知。')
 			])
@@ -694,13 +775,13 @@ function sourceSummaryById(summary, sourceId, sourceName) {
 	return {};
 }
 
-function nodesForSource(summary, sourceName) {
+function nodesForSource(summary, sourceId) {
 	let nodes = summary && Array.isArray(summary.nodes) ? summary.nodes : [];
-	if (!sourceName || sourceName === '__all__')
+	if (!sourceId || sourceId === '__all__')
 		return nodes;
 
 	return nodes.filter(function(node) {
-		return (node.source || '') === sourceName;
+		return (node.source_id || '') === sourceId;
 	});
 }
 
@@ -711,15 +792,15 @@ function activeSnapshotSource(summary) {
 		return active;
 
 	for (let i = 0; i < sources.length; i++) {
-		if ((sources[i].name || '') === active)
+		if ((sources[i].id || '') === active)
 			return active;
 	}
 
 	return '__all__';
 }
 
-function setSnapshotSource(sourceName) {
-	window.shinraNodeSnapshotSource = sourceName || '__all__';
+function setSnapshotSource(sourceId) {
+	window.shinraNodeSnapshotSource = sourceId || '__all__';
 	let container = document.getElementById('shinra-node-snapshot-summary');
 	if (container)
 		container.parentNode.replaceChild(snapshotSummary(window.shinraNodeSnapshotSummary || {}), container);
@@ -743,7 +824,7 @@ function nodeTabs(summary) {
 	let active = activeSnapshotSource(summary);
 	let tabs = [ { name: '__all__', label: _('全部'), count: summary && summary.node_count || 0 } ].concat(sources.map(function(source) {
 		return {
-			name: source.name || '',
+			name: source.id || '',
 			label: source.name || _('未命名订阅源'),
 			count: source.node_count || 0
 		};
@@ -822,6 +903,27 @@ function collectPolicyFromPage() {
 		interval: getValue('shinra-urltest-interval') || DEFAULT_URLTEST_PARAMS.interval,
 		tolerance: Number(getValue('shinra-urltest-tolerance') || DEFAULT_URLTEST_PARAMS.tolerance)
 	};
+	let rateRegions = [];
+	keys.forEach(function(region) {
+		if (checked('shinra-rate-filter-region-' + region))
+			rateRegions.push(region);
+	});
+	let ratePatterns = [];
+	if (checked('shinra-rate-filter-pattern-number-x'))
+		ratePatterns.push('number_x');
+	if (checked('shinra-rate-filter-pattern-number-cn'))
+		ratePatterns.push('number_times_cn');
+	policy.rate_filter = normalizeRateFilter({
+		enabled: checked('shinra-rate-filter-enabled'),
+		threshold: Number(getValue('shinra-rate-filter-threshold') || DEFAULT_RATE_FILTER.threshold),
+		operator: getValue('shinra-rate-filter-operator') || DEFAULT_RATE_FILTER.operator,
+		scope: getValue('shinra-rate-filter-scope') || DEFAULT_RATE_FILTER.scope,
+		matched_regions: rateRegions,
+		unmatched_action: getValue('shinra-rate-filter-unmatched-action') || DEFAULT_RATE_FILTER.unmatched_action,
+		matched_high_rate_action: getValue('shinra-rate-filter-high-action') || DEFAULT_RATE_FILTER.matched_high_rate_action,
+		patterns: ratePatterns,
+		include_integer_one: checked('shinra-rate-filter-include-one')
+	}, keys);
 	delete policy.fetch_bypass;
 	policy.subscription_update = normalizeSubscriptionUpdate({
 		auto_update: checked('shinra-subscription-auto-update'),
@@ -897,6 +999,7 @@ function refreshStatusDone(status) {
 function waitSourceRefresh(sourceName, attempt) {
 	return callSubscriptionsRefreshStatus().then(function(result) {
 		let task = result && result.ok && result.data ? result.data.task || {} : {};
+		let taskName = taskDisplayName(result, _('订阅刷新任务'));
 		let status = task.status || '';
 
 		if (!refreshStatusDone(status) && attempt < 30) {
@@ -920,7 +1023,7 @@ function waitSourceRefresh(sourceName, attempt) {
 			else if (status === 'partial')
 				setStatus(_('订阅源刷新部分完成：%s。').format(sourceName || '-'), false);
 			else
-				setStatus(_('订阅源刷新状态：%s。').format(status || _('未知')), ok);
+				setStatus(_('%s状态：%s。').format(taskName, status || _('未知')), ok);
 		});
 	});
 }
@@ -928,6 +1031,7 @@ function waitSourceRefresh(sourceName, attempt) {
 function waitSourceRefreshSummary(sourceName, sourceId, attempt) {
 	return callSubscriptionsRefreshStatus().then(function(result) {
 		let task = result && result.ok && result.data ? result.data.task || {} : {};
+		let taskName = taskDisplayName(result, _('订阅刷新任务'));
 		let status = task.status || '';
 
 		if (!refreshStatusDone(status) && attempt < 30) {
@@ -954,7 +1058,7 @@ function waitSourceRefreshSummary(sourceName, sourceId, attempt) {
 			else if (status === 'partial')
 				setStatus(_('订阅源部分刷新：%d 个节点，策略 %s。').format(nodeCount, strategy), false);
 			else
-				setStatus(_('订阅源刷新状态：%s。').format(status || _('未知')), status === 'success' || status === 'partial');
+				setStatus(_('%s状态：%s。').format(taskName, status || _('未知')), status === 'success' || status === 'partial');
 		});
 	});
 }
@@ -986,7 +1090,7 @@ function refreshOneSource(index, retried) {
 			return;
 		}
 		if (!(result.data && result.data.started)) {
-			setStatus(_('已有订阅刷新任务正在运行，请稍后再试。'), false);
+			setStatus(_('已有%s正在运行，请稍后再试。').format(taskDisplayName(result, _('订阅刷新任务'))), false);
 			return;
 		}
 		return waitSourceRefreshSummary(sourceName, sourceId, 0);
