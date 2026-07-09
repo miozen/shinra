@@ -29,10 +29,10 @@ function local_ruleset_entry(tag, original) {
 	};
 }
 
-function localize_rulesets(profile, policy) {
+function localize_rulesets(profile, ruleset_policy) {
 	let mode = "auto";
-	if (type(policy) == "object" && policy != null && type(policy.ruleset) == "object" && policy.ruleset != null && type(policy.ruleset.mode) == "string" && policy.ruleset.mode != "")
-		mode = policy.ruleset.mode;
+	if (type(ruleset_policy) == "object" && ruleset_policy != null && type(ruleset_policy.mode) == "string" && ruleset_policy.mode != "")
+		mode = ruleset_policy.mode;
 
 	let result = {
 		mode: mode,

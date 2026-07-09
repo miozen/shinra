@@ -14,6 +14,7 @@ const PATH = {
 	DASHBOARD_SOURCE: "/etc/shinra/dashboard.json",
 	DASHBOARD_DIR: "/www/shinra/dashboard",
 	SUBSCRIPTIONS: "/etc/shinra/subscriptions.json",
+	RULESET_POLICY: "/etc/shinra/ruleset-policy.json",
 	NODE_SNAPSHOT: "/etc/shinra/node-snapshot.json",
 	RUNTIME_CONFIG: "/etc/shinra/runtime/config.json",
 	RUNTIME_CONFIG_BAK: "/etc/shinra/runtime/config.json.bak",

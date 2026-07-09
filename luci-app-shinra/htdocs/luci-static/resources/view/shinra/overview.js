@@ -5,81 +5,9 @@
 'require shinra.ui as shinraUi';
 'require shinra.motion as shinraMotion';
 
-const callRuntimeStatus = rpc.declare({
+const callOverviewStatus = rpc.declare({
 	object: 'shinra',
-	method: 'runtime_status',
-	expect: { '': {} }
-});
-
-const callProfileGet = rpc.declare({
-	object: 'shinra',
-	method: 'profile_get',
-	expect: { '': {} }
-});
-
-const callProfileSourceGet = rpc.declare({
-	object: 'shinra',
-	method: 'profile_source_get',
-	expect: { '': {} }
-});
-
-const callSubscriptionsGet = rpc.declare({
-	object: 'shinra',
-	method: 'subscriptions_get',
-	expect: { '': {} }
-});
-
-const callNodeSnapshotSummary = rpc.declare({
-	object: 'shinra',
-	method: 'node_snapshot_summary',
-	expect: { '': {} }
-});
-
-const callRulesetRequiredInventory = rpc.declare({
-	object: 'shinra',
-	method: 'ruleset_required_inventory',
-	expect: { '': {} }
-});
-
-const callRulesetPolicyGet = rpc.declare({
-	object: 'shinra',
-	method: 'ruleset_policy_get',
-	expect: { '': {} }
-});
-
-const callDashboardStatus = rpc.declare({
-	object: 'shinra',
-	method: 'dashboard_status',
-	expect: { '': {} }
-});
-
-const callApiStatus = rpc.declare({
-	object: 'shinra',
-	method: 'api_status',
-	expect: { '': {} }
-});
-
-const callNotifySettingsGet = rpc.declare({
-	object: 'shinra',
-	method: 'notify_settings_get',
-	expect: { '': {} }
-});
-
-const callAutoTaskStatusGet = rpc.declare({
-	object: 'shinra',
-	method: 'auto_task_status_get',
-	expect: { '': {} }
-});
-
-const callSubscriptionsRefreshStatus = rpc.declare({
-	object: 'shinra',
-	method: 'subscriptions_refresh_status',
-	expect: { '': {} }
-});
-
-const callRulesetDownloadRequiredStatus = rpc.declare({
-	object: 'shinra',
-	method: 'ruleset_download_required_status',
+	method: 'overview_status',
 	expect: { '': {} }
 });
 
@@ -222,6 +150,16 @@ function statusWord(status) {
 	return '-';
 }
 
+function taskMetaOf(result) {
+	const data = shinraUi.dataOf(result);
+	return data.task_meta && typeof data.task_meta === 'object' ? data.task_meta : {};
+}
+
+function taskDisplayName(result, fallback) {
+	const meta = taskMetaOf(result);
+	return meta.display_name || fallback || _('后台任务');
+}
+
 function compactMessage(text) {
 	text = shinraUi.valueText(text);
 	text = text.replace(/Required Rule Sets downloaded/g, '所需规则集已同步');
@@ -241,15 +179,6 @@ function compactMessage(text) {
 	return text;
 }
 
-function autoJobText(job, disabledText, waitingText) {
-	job = job || {};
-	if (job.last_status)
-		return _('%s 于 %s').format(statusWord(job.last_status), shinraTime.formatMaybeTime(job.last_run_at));
-	if (job.enabled)
-		return waitingText || _('自动任务等待中');
-	return disabledText || _('自动任务已停用');
-}
-
 function schedulerTaskText(schedulerTask, task, disabledText, waitingText) {
 	schedulerTask = schedulerTask || {};
 	task = task || {};
@@ -258,8 +187,13 @@ function schedulerTaskText(schedulerTask, task, disabledText, waitingText) {
 	if (schedulerTask.last_trigger_result && schedulerTask.last_trigger_result !== 'waiting')
 		return _('%s 于 %s').format(schedulerTask.last_trigger_result, shinraTime.formatMaybeTime(schedulerTask.last_run_at));
 	if (schedulerTask.enabled)
-		return waitingText || _('自动任务等待中');
-	return disabledText || _('自动任务已停用');
+		return waitingText || _('等待调度');
+	return disabledText || _('自动调度已停用');
+}
+
+function backgroundTaskText(taskName, schedulerTask, task, disabledText, waitingText) {
+	const text = schedulerTaskText(schedulerTask, task, disabledText, waitingText);
+	return taskName ? _('%s：%s').format(taskName, text) : text;
 }
 
 function autoApplySummary(task) {
@@ -285,19 +219,19 @@ function schedulerWarning(scheduler, enabled) {
 	if (scheduler.healthy)
 		return '';
 	if (!scheduler.script_exists)
-		return _('自动任务脚本缺失');
+		return _('自动调度器脚本缺失');
 	if (!scheduler.script_executable)
-		return _('自动任务脚本不可执行');
+		return _('自动调度器脚本不可执行');
 	if (!scheduler.cron_installed)
 		return _('系统计划任务未安装');
 	if (!scheduler.cron_running)
 		return _('cron 未运行');
-	return _('自动任务调度器异常');
+	return _('自动调度器异常');
 }
 
 function schedulerPlanText(enabled, hour) {
 	if (!enabled)
-		return _('自动任务已停用');
+		return _('自动调度已停用');
 	if (hour == null || hour === '')
 		return _('已启用，等待调度');
 	hour = Number(hour);
@@ -388,71 +322,60 @@ function refreshPage() {
 	});
 }
 
+function overviewItem(items, key, fallback) {
+	return items && items[key] ? items[key] : {
+		ok: false,
+		message: fallback || _('加载失败'),
+		detail: key
+	};
+}
+
 function loadAll() {
-	return Promise.all([
-		callRuntimeStatus().catch(function(e) { return { ok: false, message: _('Runtime 状态加载失败'), detail: e.message || String(e) }; }),
-		callProfileGet().catch(function(e) { return { ok: false, message: _('模板加载失败'), detail: e.message || String(e) }; }),
-		callSubscriptionsGet().catch(function(e) { return { ok: false, message: _('订阅加载失败'), detail: e.message || String(e) }; }),
-		callNodeSnapshotSummary().catch(function(e) { return { ok: false, message: _('节点快照摘要加载失败'), detail: e.message || String(e) }; }),
-		callRulesetRequiredInventory().catch(function(e) { return { ok: false, message: _('规则集清单加载失败'), detail: e.message || String(e) }; }),
-		callDashboardStatus().catch(function(e) { return { ok: false, message: _('面板状态加载失败'), detail: e.message || String(e) }; }),
-		callApiStatus().catch(function(e) { return { ok: false, message: _('API 状态加载失败'), detail: e.message || String(e) }; })
-	]).then(function(results) {
+	return callOverviewStatus().then(function(result) {
+		const items = shinraUi.dataOf(result).items || {};
 		return {
-			runtime: results[0],
-			profile: results[1],
-			subscriptions: results[2],
-			snapshot: results[3],
-			rules: results[4],
-			panel: results[5],
-			apiStatus: results[6]
+			runtime: overviewItem(items, 'runtime', _('Runtime 状态加载失败')),
+			profile: overviewItem(items, 'profile', _('模板加载失败')),
+			subscriptions: overviewItem(items, 'subscriptions', _('订阅加载失败')),
+			snapshot: overviewItem(items, 'snapshot', _('节点快照摘要加载失败')),
+			rules: overviewItem(items, 'rules', _('规则集清单加载失败')),
+			panel: overviewItem(items, 'dashboard', _('面板状态加载失败')),
+			apiStatus: overviewItem(items, 'api', _('API 状态加载失败')),
+			profileSource: overviewItem(items, 'profile_source', _('模板源加载失败')),
+			rulesPolicy: overviewItem(items, 'rules_policy', _('规则集策略加载失败')),
+			notify: overviewItem(items, 'notify', _('通知设置加载失败')),
+			autoTask: overviewItem(items, 'scheduler', _('自动调度器状态加载失败')),
+			subscriptionTask: overviewItem(items, 'subscription_task', _('订阅刷新后台任务状态加载失败')),
+			rulesetTask: overviewItem(items, 'ruleset_task', _('规则集同步后台任务状态加载失败'))
+		};
+	}).catch(function(e) {
+		const failed = { ok: false, message: _('Overview 状态加载失败'), detail: e.message || String(e) };
+		return {
+			runtime: failed,
+			profile: failed,
+			subscriptions: failed,
+			snapshot: failed,
+			rules: failed,
+			panel: failed,
+			apiStatus: failed,
+			profileSource: failed,
+			rulesPolicy: failed,
+			notify: failed,
+			autoTask: failed,
+			subscriptionTask: failed,
+			rulesetTask: failed
 		};
 	});
 }
 
 function hasSupplementalData() {
-	return !!(
-		pageResults.profileSource ||
-		pageResults.rulesPolicy ||
-		pageResults.notify ||
-		pageResults.autoTask ||
-		pageResults.subscriptionTask ||
-		pageResults.rulesetTask
-	);
+	return true;
 }
 
 function loadSupplemental() {
-	if (supplementalLoading || hasSupplementalData())
-		return;
-
-	supplementalLoading = true;
-	const seq = ++supplementalLoadSeq;
-	Promise.all([
-		callProfileSourceGet().catch(function(e) { return { ok: false, message: _('模板源加载失败'), detail: e.message || String(e) }; }),
-		callRulesetPolicyGet().catch(function(e) { return { ok: false, message: _('规则集策略加载失败'), detail: e.message || String(e) }; }),
-		callNotifySettingsGet().catch(function(e) { return { ok: false, message: _('通知设置加载失败'), detail: e.message || String(e) }; }),
-		callAutoTaskStatusGet().catch(function(e) { return { ok: false, message: _('自动任务状态加载失败'), detail: e.message || String(e) }; }),
-		callSubscriptionsRefreshStatus().catch(function(e) { return { ok: false, message: _('订阅刷新任务状态加载失败'), detail: e.message || String(e) }; }),
-		callRulesetDownloadRequiredStatus().catch(function(e) { return { ok: false, message: _('规则集任务状态加载失败'), detail: e.message || String(e) }; })
-	]).then(function(results) {
-		if (seq !== supplementalLoadSeq)
-			return;
-		pageResults.profileSource = results[0];
-		pageResults.rulesPolicy = results[1];
-		pageResults.notify = results[2];
-		pageResults.autoTask = results[3];
-		pageResults.subscriptionTask = results[4];
-		pageResults.rulesetTask = results[5];
-		supplementalLoading = false;
-		redraw();
-	}).catch(function() {
-		if (seq === supplementalLoadSeq)
-			supplementalLoading = false;
-	});
 }
 
 function ensureSupplementalLoad() {
-	window.setTimeout(loadSupplemental, 0);
 }
 
 function runtimeCards() {
@@ -514,6 +437,8 @@ function resourceCards() {
 	const rulesSchedulerTask = schedulerTasks['ruleset.sync'] || {};
 	const subTask = shinraUi.dataOf(pageResults.subscriptionTask).task || {};
 	const rulesTask = shinraUi.dataOf(pageResults.rulesetTask).task || {};
+	const subTaskName = taskDisplayName(pageResults.subscriptionTask, _('订阅刷新任务'));
+	const rulesTaskName = taskDisplayName(pageResults.rulesetTask, _('规则集同步任务'));
 	const sourceCount = Array.isArray(subscriptions.sources) ? subscriptions.sources.length : 0;
 	const nodeCount = Number(snapshot.node_count || 0);
 	const missingRules = Number(rules.missing_count || 0);
@@ -526,11 +451,11 @@ function resourceCards() {
 	const snapshotTime = snapshot.updated_at ? shinraTime.formatMaybeTime(snapshot.updated_at) : _('未刷新');
 	const subUpdate = subscriptions.subscription_update || {};
 	const subScheduleWarning = schedulerWarning(scheduler, subUpdate.auto_update === true);
-	const subAutoText = subScheduleWarning || schedulerTaskText(subSchedulerTask, subTask, _('自动刷新已停用'), schedulerPlanText(true, subUpdate.update_hour));
+	const subAutoText = subScheduleWarning || backgroundTaskText(subTaskName, subSchedulerTask, subTask, _('自动刷新已停用'), schedulerPlanText(true, subUpdate.update_hour));
 	const rulesTimeRaw = rulesTask.finished_at || rulesTask.started_at || rulesSchedulerTask.last_run_at || '';
 	const rulesTime = rulesTimeRaw ? shinraTime.formatMaybeTime(rulesTimeRaw) : _('未同步');
 	const rulesScheduleWarning = schedulerWarning(scheduler, rulesPolicy.auto_update === true);
-	const rulesResultText = rulesScheduleWarning || compactMessage(schedulerTaskText(rulesSchedulerTask, rulesTask, _('自动同步已停用'), schedulerPlanText(true, rulesPolicy.update_hour)));
+	const rulesResultText = rulesScheduleWarning || compactMessage(backgroundTaskText(rulesTaskName, rulesSchedulerTask, rulesTask, _('自动同步已停用'), schedulerPlanText(true, rulesPolicy.update_hour)));
 	const rulesMode = rulesPolicy.mode || '-';
 	const rulesAutoApplyText = autoApplySummary(rulesTask);
 	const rulesDetailText = _('上次同步：%s | 需要 %d / 已就绪 %d / 缺失 %d / 本地多余 %d | %s | %s%s').format(

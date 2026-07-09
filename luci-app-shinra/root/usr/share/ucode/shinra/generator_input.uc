@@ -6,7 +6,8 @@
 
 import { PATH } from 'shinra.core.constants';
 import { read_text, parse_json_object } from 'shinra.core.utils';
-import { normalize_subscriptions_policy } from 'shinra.subscription_policy';
+import { normalize_subscriptions_policy } from 'shinra.subscription_policy_schema';
+import { ruleset_policy_config } from 'shinra.ruleset_policy';
 
 function parse_profile() {
 	let profile = parse_json_object(read_text(PATH.PROFILE), "Profile");
@@ -31,4 +32,8 @@ function parse_subscriptions_policy() {
 	return normalize_subscriptions_policy(config);
 }
 
-export { parse_profile, parse_node_snapshot, parse_subscriptions_policy };
+function parse_ruleset_policy() {
+	return ruleset_policy_config().policy;
+}
+
+export { parse_profile, parse_node_snapshot, parse_subscriptions_policy, parse_ruleset_policy };

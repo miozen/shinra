@@ -9,7 +9,7 @@ import { Success, Fail } from 'shinra.core.result';
 import { ERR } from 'shinra.core.error';
 import { lock_acquire, lock_release } from 'shinra.core.lock';
 import { read_text, write_text_atomic, request_content, request_keys, json_stringify, json_stringify_pretty, ExecSafe } from 'shinra.core.utils';
-import { validate_refresh_strategy } from 'shinra.subscription_policy';
+import { validate_refresh_strategy } from 'shinra.subscription_policy_schema';
 import { finish_task, fail_task } from 'shinra.core.task';
 import { validate_url, validate_subscriptions_content, refresh_strategy } from 'shinra.subscription_config';
 import { preflight_for_url } from 'shinra.subscription_preflight';
@@ -133,6 +133,97 @@ function target_source_count(config, target_source_id) {
 	die("Subscription source id not found: " + target_source_id);
 }
 
+function source_id_set(config) {
+	let ids = {};
+	if (type(config) != "object" || config == null || type(config.sources) != "array")
+		return ids;
+
+	for (let source in config.sources) {
+		if (type(source) == "object" && source != null && type(source.id) == "string" && source.id != "")
+			ids[source.id] = true;
+	}
+
+	return ids;
+}
+
+function deleted_source_ids(old_config, next_config) {
+	let deleted = [];
+	let next_ids = source_id_set(next_config);
+
+	if (type(old_config) != "object" || old_config == null || type(old_config.sources) != "array")
+		return deleted;
+
+	for (let source in old_config.sources) {
+		if (type(source) != "object" || source == null || type(source.id) != "string" || source.id == "")
+			continue;
+		if (!next_ids[source.id])
+			push(deleted, source.id);
+	}
+
+	return deleted;
+}
+
+function id_filter_map(ids) {
+	let map = {};
+	for (let id in ids) {
+		if (type(id) == "string" && id != "")
+			map[id] = true;
+	}
+	return map;
+}
+
+function current_subscriptions_config() {
+	try {
+		return validate_subscriptions_content(read_text(PATH.SUBSCRIPTIONS));
+	} catch (e) {
+		return null;
+	}
+}
+
+function prune_snapshot_deleted_sources(deleted_ids) {
+	if (length(deleted_ids) == 0)
+		return {
+			content: "",
+			sources_pruned: 0,
+			nodes_pruned: 0
+		};
+
+	let snapshot = validate_node_snapshot_content(read_text(PATH.NODE_SNAPSHOT));
+	let deleted = id_filter_map(deleted_ids);
+	let sources = [];
+	let outbounds = [];
+	let sources_pruned = 0;
+	let nodes_pruned = 0;
+
+	for (let source in snapshot.sources) {
+		if (deleted[source.id]) {
+			sources_pruned = sources_pruned + 1;
+			continue;
+		}
+		push(sources, source);
+	}
+
+	for (let outbound in snapshot.outbounds) {
+		if (deleted[outbound.x_shinra_source_id]) {
+			nodes_pruned = nodes_pruned + 1;
+			continue;
+		}
+		push(outbounds, outbound);
+	}
+
+	snapshot.sources = sources;
+	snapshot.outbounds = outbounds;
+
+	let content = json_stringify_pretty(snapshot) + "\n";
+	validate_node_snapshot_content(content);
+
+	return {
+		content: content,
+		sources_pruned: sources_pruned,
+		nodes_pruned: nodes_pruned
+	};
+}
+
 function subscriptions_get(trace_id, req) {
 	try {
 		let content = read_text(PATH.SUBSCRIPTIONS);
@@ -153,9 +244,20 @@ function subscriptions_save(trace_id, req) {
 
 		let config = validate_subscriptions_content(content);
 		lock = lock_acquire("subscription", trace_id);
+		let old_config = current_subscriptions_config();
+		let deleted_ids = deleted_source_ids(old_config, config);
+		let snapshot_prune = prune_snapshot_deleted_sources(deleted_ids);
 		write_text_atomic(PATH.SUBSCRIPTIONS, json_stringify(config));
+		if (snapshot_prune.content != "")
+			write_text_atomic(PATH.NODE_SNAPSHOT, snapshot_prune.content);
 		lock_release(lock);
-		return Success({ path: PATH.SUBSCRIPTIONS }, 200, trace_id, "Subscriptions saved");
+		return Success({
+			path: PATH.SUBSCRIPTIONS,
+			node_snapshot_path: PATH.NODE_SNAPSHOT,
+			deleted_source_count: length(deleted_ids),
+			snapshot_sources_pruned: snapshot_prune.sources_pruned,
+			snapshot_nodes_pruned: snapshot_prune.nodes_pruned
+		}, 200, trace_id, "Subscriptions saved");
 	} catch (e) {
 		if (lock != null)
 			lock_release(lock);

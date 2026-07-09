@@ -5,7 +5,7 @@
 'use strict';
 
 import { parse_json_object } from 'shinra.core.utils';
-import { validate_refresh_strategy, normalize_subscriptions_policy } from 'shinra.subscription_policy';
+import { validate_refresh_strategy, normalize_subscriptions_policy } from 'shinra.subscription_policy_schema';
 
 function validate_url(url) {
 	if (type(url) != "string" || url == "")

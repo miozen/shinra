@@ -1,5 +1,5 @@
 /**
- * Shinra | subscription_policy.uc | v1.0
+ * Shinra | subscription_policy_schema.uc | v1.0
  */
 
 'use strict';
@@ -39,17 +39,17 @@ function default_urltest_params() {
 	};
 }
 
-function default_ruleset_policy() {
+function default_rate_filter() {
 	return {
-		mode: "auto",
-		fetch_strategy: "direct",
-		auto_update: false,
-		auto_apply_after_update: false,
-		update_hour: 4,
-		repositories: {
-			"private": "",
-			"public": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing"
-		}
+		enabled: true,
+		threshold: 1.5,
+		operator: ">=",
+		scope: "matched_regions",
+		matched_regions: [ "HK", "TW", "SG", "JP", "US" ],
+		unmatched_action: "keep",
+		matched_high_rate_action: "drop",
+		patterns: [ "number_x" ],
+		include_integer_one: false
 	};
 }
 
@@ -77,9 +77,29 @@ function validate_subscription_update_strategy(strategy) {
 		die("subscription_update.strategy must be saved, direct, or proxy");
 }
 
-function validate_ruleset_mode(mode) {
-	if (mode != "remote" && mode != "auto" && mode != "local")
-		die("ruleset.mode must be remote, auto, or local");
+function validate_rate_filter_operator(operator) {
+	if (operator != ">=" && operator != ">")
+		die("rate_filter.operator must be >= or >");
+}
+
+function validate_rate_filter_scope(scope) {
+	if (scope != "matched_regions" && scope != "all" && scope != "none")
+		die("rate_filter.scope must be matched_regions, all, or none");
+}
+
+function validate_rate_filter_unmatched_action(action) {
+	if (action != "keep" && action != "drop")
+		die("rate_filter.unmatched_action must be keep or drop");
+}
+
+function validate_rate_filter_high_rate_action(action) {
+	if (action != "drop" && action != "raw")
+		die("rate_filter.matched_high_rate_action must be drop or raw");
+}
+
+function validate_rate_filter_pattern(pattern) {
+	if (pattern != "number_x" && pattern != "number_times_cn")
+		die("rate_filter.patterns contains unsupported pattern: " + pattern);
 }
 
 function digit_value(ch) {
@@ -308,57 +328,53 @@ function normalize_urltest_params(raw) {
 	return result;
 }
 
-function normalize_repository_url(url, label, allow_empty) {
-	if (type(url) != "string" || url == "") {
-		if (allow_empty)
-			return "";
-		die(label + " must be a non-empty URL");
-	}
-
-	if (substr(url, 0, 7) != "http://" && substr(url, 0, 8) != "https://")
-		die(label + " must start with http:// or https://");
-
-	return url;
-}
-
-function normalize_ruleset_policy(raw) {
-	let defaults = default_ruleset_policy();
+function normalize_rate_filter(raw, regions) {
+	let defaults = default_rate_filter();
 	let result = {
-		mode: defaults.mode,
-		fetch_strategy: defaults.fetch_strategy,
-		auto_update: defaults.auto_update,
-		auto_apply_after_update: defaults.auto_apply_after_update,
-		update_hour: defaults.update_hour,
-		repositories: {
-			"private": defaults.repositories["private"],
-			"public": defaults.repositories["public"]
-		}
+		enabled: defaults.enabled,
+		threshold: defaults.threshold,
+		operator: defaults.operator,
+		scope: defaults.scope,
+		matched_regions: clone_string_array(defaults.matched_regions, "rate_filter.matched_regions"),
+		unmatched_action: defaults.unmatched_action,
+		matched_high_rate_action: defaults.matched_high_rate_action,
+		patterns: clone_string_array(defaults.patterns, "rate_filter.patterns"),
+		include_integer_one: defaults.include_integer_one
 	};
 
 	if (type(raw) == "object" && raw != null && type(raw) != "array") {
-		if (type(raw.mode) == "string" && raw.mode != "")
-			result.mode = raw.mode;
-		if (type(raw.fetch_strategy) == "string" && raw.fetch_strategy != "")
-			result.fetch_strategy = raw.fetch_strategy;
-		result.auto_update = raw.auto_update == true ? true : false;
-		result.auto_apply_after_update = raw.auto_apply_after_update == true ? true : false;
-		if (type(raw.update_hour) == "int")
-			result.update_hour = raw.update_hour;
-		if (type(raw.repositories) == "object" && raw.repositories != null && type(raw.repositories) != "array") {
-			if (type(raw.repositories["private"]) == "string")
-				result.repositories["private"] = raw.repositories["private"];
-			if (type(raw.repositories["public"]) == "string" && raw.repositories["public"] != "")
-				result.repositories["public"] = raw.repositories["public"];
-		}
+		result.enabled = raw.enabled == false ? false : true;
+		if (type(raw.threshold) == "int" || type(raw.threshold) == "double")
+			result.threshold = raw.threshold;
+		if (type(raw.operator) == "string" && raw.operator != "")
+			result.operator = raw.operator;
+		if (type(raw.scope) == "string" && raw.scope != "")
+			result.scope = raw.scope;
+		if (type(raw.matched_regions) == "array")
+			result.matched_regions = clone_string_array(raw.matched_regions, "rate_filter.matched_regions");
+		if (type(raw.unmatched_action) == "string" && raw.unmatched_action != "")
+			result.unmatched_action = raw.unmatched_action;
+		if (type(raw.matched_high_rate_action) == "string" && raw.matched_high_rate_action != "")
+			result.matched_high_rate_action = raw.matched_high_rate_action;
+		if (type(raw.patterns) == "array")
+			result.patterns = clone_string_array(raw.patterns, "rate_filter.patterns");
+		result.include_integer_one = raw.include_integer_one == true ? true : false;
 	}
 
-	validate_ruleset_mode(result.mode);
-	validate_fetch_strategy(result.fetch_strategy, "ruleset.fetch_strategy");
-	if (result.update_hour < 0 || result.update_hour > 23)
-		die("ruleset.update_hour must be between 0 and 23");
+	if (result.threshold < 0)
+		die("rate_filter.threshold must not be negative");
+	validate_rate_filter_operator(result.operator);
+	validate_rate_filter_scope(result.scope);
+	validate_rate_filter_unmatched_action(result.unmatched_action);
+	validate_rate_filter_high_rate_action(result.matched_high_rate_action);
 
-	result.repositories["private"] = normalize_repository_url(result.repositories["private"], "ruleset.repositories.private", true);
-	result.repositories["public"] = normalize_repository_url(result.repositories["public"], "ruleset.repositories.public", false);
+	for (let region in result.matched_regions) {
+		if (!has_region(regions, region))
+			die("Unsupported rate_filter matched region: " + region);
+	}
+
+	for (let pattern in result.patterns)
+		validate_rate_filter_pattern(pattern);
 
 	return result;
 }
@@ -527,11 +543,11 @@ function normalize_subscriptions_policy(config) {
 		region_keys: regions,
 		banned_keywords: merge_pipe_text(default_banned_keywords(), config.banned_keywords),
 		urltest_params: normalize_urltest_params(config.urltest_params),
+		rate_filter: normalize_rate_filter(config.rate_filter, regions),
 		subscription_update: normalize_subscription_update_policy(config.subscription_update),
-		ruleset: normalize_ruleset_policy(config.ruleset),
 		sources: sources
 	};
 }
 
-export { default_region_keywords, default_banned_keywords, default_urltest_params, default_ruleset_policy, default_subscription_update_policy, validate_refresh_strategy, validate_fetch_strategy, normalize_subscriptions_policy };
+export { default_region_keywords, default_banned_keywords, default_urltest_params, default_rate_filter, default_subscription_update_policy, validate_refresh_strategy, validate_fetch_strategy, normalize_subscriptions_policy };
 

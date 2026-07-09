@@ -12,15 +12,15 @@ import { lock_acquire, lock_release } from 'shinra.core.lock';
 import { finish_task, fail_task } from 'shinra.core.task';
 import { ruleset_transaction_prepare_change, ruleset_transaction_record_change, ruleset_artifact_state } from 'shinra.core.ruleset_artifact';
 import { maybe_auto_apply_ruleset_update } from 'shinra.auto_apply';
-import { normalized_subscriptions_config, ruleset_policy_get_impl, ruleset_policy_save_impl } from 'shinra.ruleset_policy';
+import { ruleset_policy_config, ruleset_policy_get_impl, ruleset_policy_save_impl } from 'shinra.ruleset_policy';
 import { RULESET_SYNC_TASK, RULESET_DOWNLOAD_ONE_TASK, ruleset_task_enabled, ruleset_download_one_task_enabled, progress_percent, write_ruleset_task_progress, write_ruleset_download_one_task_progress, ruleset_download_required_status_impl, request_tag, ruleset_download_one_status_impl, ruleset_download_one_start_impl, ruleset_download_required_start_impl } from 'shinra.ruleset_task';
 import { redacted_url, file_metadata, required_entries_from_profile, ruleset_required_inventory_impl, ruleset_inventory_impl } from 'shinra.ruleset_inventory';
 import { ensure_rule_dirs, ruleset_urls, direct_fetch_rule, same_file_content, atomic_swap_rule } from 'shinra.ruleset_download';
 
-function download_required_entry(trace_id, entry, config, strategy, tmp_dir, on_progress) {
+function download_required_entry(trace_id, entry, ruleset_policy, strategy, tmp_dir, on_progress) {
 	let final_path = PATH.RULE_DIR + "/" + entry.tag + ".srs";
 	let meta = file_metadata(final_path);
-	let urls = ruleset_urls(entry, config.ruleset);
+	let urls = ruleset_urls(entry, ruleset_policy);
 	let tmp_path = tmp_dir + "/" + entry.tag + ".srs.tmp";
 	let attempts = [];
 	let downloaded = false;
@@ -91,7 +91,7 @@ function download_required_entry(trace_id, entry, config, strategy, tmp_dir, on_
 	}
 
 	let prepared = null;
-	if (config.ruleset.mode == "local")
+	if (ruleset_policy.mode == "local")
 		prepared = ruleset_transaction_prepare_change(trace_id, entry.tag, final_path);
 
 	let swap = atomic_swap_rule(tmp_path, final_path);
@@ -148,8 +148,8 @@ function ruleset_download_required(trace_id, req) {
 	let lock = null;
 	try {
 		ensure_rule_dirs();
-		let config = normalized_subscriptions_config();
-		let strategy = config.ruleset.fetch_strategy == "proxy" ? "proxy" : "direct";
+		let ruleset_policy = ruleset_policy_config().policy;
+		let strategy = ruleset_policy.fetch_strategy == "proxy" ? "proxy" : "direct";
 		let required = required_entries_from_profile().entries;
 		let updated = [];
 		let unchanged = [];
@@ -199,7 +199,7 @@ function ruleset_download_required(trace_id, req) {
 				}
 			});
 
-			let result = download_required_entry(trace_id, entry, config, strategy, tmp_dir, function(patch) {
+			let result = download_required_entry(trace_id, entry, ruleset_policy, strategy, tmp_dir, function(patch) {
 				write_ruleset_task_progress(trace_id, {
 					current_item: patch.current_item,
 					last_error: patch.last_error || "",
@@ -283,11 +283,11 @@ function ruleset_download_required(trace_id, req) {
 			unchanged_count: length(unchanged),
 			failed_count: length(failed),
 			checked_count: length(checked),
-			mode: config.ruleset.mode
+			mode: ruleset_policy.mode
 		}, {
 			auto_apply_intent: type(req) == "object" && req != null && req.auto_apply_intent == true,
 			scheduler_intent: type(req) == "object" && req != null && req.scheduler_intent == true,
-			ruleset_policy: config.ruleset
+			ruleset_policy: ruleset_policy
 		});
 		if (ruleset_task_enabled(trace_id)) {
 			finish_task(RULESET_SYNC_TASK, length(failed) ? "partial" : "success", trace_id, {
@@ -317,7 +317,7 @@ function ruleset_download_required(trace_id, req) {
 			checked_count: length(checked),
 			rule_dir: PATH.RULE_DIR,
 			tmp_dir: tmp_dir,
-			mode: config.ruleset.mode,
+			mode: ruleset_policy.mode,
 			fetch_strategy: strategy,
 			updated: updated,
 			unchanged: unchanged,
@@ -356,8 +356,8 @@ function ruleset_download_one(trace_id, req) {
 	try {
 		ensure_rule_dirs();
 		let tag = request_tag(req);
-		let config = normalized_subscriptions_config();
-		let strategy = config.ruleset.fetch_strategy == "proxy" ? "proxy" : "direct";
+		let ruleset_policy = ruleset_policy_config().policy;
+		let strategy = ruleset_policy.fetch_strategy == "proxy" ? "proxy" : "direct";
 		let required = required_entries_from_profile().entries;
 		let entry = find_required_entry(required, tag);
 		let tmp_dir = PATH.RULE_DIR + "/.tmp";
@@ -387,7 +387,7 @@ function ruleset_download_one(trace_id, req) {
 			trace_id: trace_id
 		});
 
-		let result = download_required_entry(trace_id, entry, config, strategy, tmp_dir, function(patch) {
+		let result = download_required_entry(trace_id, entry, ruleset_policy, strategy, tmp_dir, function(patch) {
 			write_ruleset_download_one_task_progress(trace_id, {
 				current_item: patch.current_item,
 				last_error: patch.last_error || "",
@@ -456,7 +456,7 @@ function ruleset_download_one(trace_id, req) {
 			path: result.path,
 			size: result.size || 0,
 			url_redacted: result.url_redacted || "",
-			mode: config.ruleset.mode,
+			mode: ruleset_policy.mode,
 			fetch_strategy: strategy,
 			pending_runtime_validation: result.pending_runtime_validation == true,
 			transaction_changed_count: result.transaction_changed_count || 0,

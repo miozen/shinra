@@ -17,6 +17,10 @@ chmod 0755 /usr/libexec/shinra-auto-task 2>/dev/null || true
 chmod 0755 /usr/libexec/shinra-runner 2>/dev/null || true
 chmod 0755 /usr/libexec/shinra-ruleset-sync-job 2>/dev/null || true
 
+if [ -x /etc/init.d/shinra ]; then
+	/etc/init.d/shinra enable 2>/dev/null || true
+fi
+
 copy_default() {
 	local src="$1"
 	local dst="$2"
@@ -31,6 +35,32 @@ copy_default /usr/share/shinra/defaults/profile-source.json /etc/shinra/profile-
 copy_default /usr/share/shinra/defaults/notify.json /etc/shinra/notify.json
 copy_default /usr/share/shinra/defaults/dashboard.json /etc/shinra/dashboard.json
 copy_default /usr/share/shinra/defaults/subscriptions.json /etc/shinra/subscriptions.json
+
+ucode -e '
+import { readfile, writefile, rename, stat } from "fs";
+
+let subscriptions_path = "/etc/shinra/subscriptions.json";
+let ruleset_policy_path = "/etc/shinra/ruleset-policy.json";
+let subscriptions_raw = readfile(subscriptions_path);
+
+if (subscriptions_raw != null) {
+	let subscriptions = json(subscriptions_raw);
+
+	if (type(subscriptions) == "object" && subscriptions != null && type(subscriptions) != "array" &&
+	    type(subscriptions.ruleset) == "object" && subscriptions.ruleset != null && type(subscriptions.ruleset) != "array") {
+		let ruleset_policy_stat = stat(ruleset_policy_path);
+
+		if (type(ruleset_policy_stat) != "object" || ruleset_policy_stat == null)
+			writefile(ruleset_policy_path, sprintf("%J", subscriptions.ruleset));
+
+		delete subscriptions.ruleset;
+		writefile(subscriptions_path + ".tmp", sprintf("%J", subscriptions));
+		rename(subscriptions_path + ".tmp", subscriptions_path);
+	}
+}
+' 2>/dev/null || true
+
+copy_default /usr/share/shinra/defaults/ruleset-policy.json /etc/shinra/ruleset-policy.json
 copy_default /usr/share/shinra/defaults/node-snapshot.json /etc/shinra/node-snapshot.json
 
 if [ -x /usr/libexec/shinra-ensure-auto-task ]; then

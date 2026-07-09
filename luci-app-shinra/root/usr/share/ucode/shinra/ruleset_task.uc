@@ -16,6 +16,24 @@ const RULESET_SYNC_TRACE = "shinra-runner-ruleset-sync";
 const RULESET_DOWNLOAD_ONE_TASK = "ruleset.download_one";
 const RULESET_DOWNLOAD_ONE_TRACE = "shinra-runner-ruleset-download-one";
 
+function ruleset_sync_task_meta() {
+	return {
+		task_type: RULESET_SYNC_TASK,
+		display_name: "规则集同步任务",
+		category: "background_task",
+		status_path: task_path(RULESET_SYNC_TASK)
+	};
+}
+
+function ruleset_download_one_task_meta() {
+	return {
+		task_type: RULESET_DOWNLOAD_ONE_TASK,
+		display_name: "单个规则集下载任务",
+		category: "background_task",
+		status_path: task_path(RULESET_DOWNLOAD_ONE_TASK)
+	};
+}
+
 function ruleset_task_enabled(trace_id) {
 	return trace_id == RULESET_SYNC_TRACE;
 }
@@ -66,7 +84,8 @@ function ruleset_download_required_status(trace_id, req) {
 		return Success({
 			path: path,
 			exists: file_exists(path),
-			task: read_task(RULESET_SYNC_TASK)
+			task: read_task(RULESET_SYNC_TASK),
+			task_meta: ruleset_sync_task_meta()
 		}, 200, trace_id, "Rule Set sync task status loaded");
 	} catch (e) {
 		let err = "" + e;
@@ -86,7 +105,8 @@ function ruleset_download_one_status(trace_id, req) {
 		return Success({
 			path: path,
 			exists: file_exists(path),
-			task: read_task(RULESET_DOWNLOAD_ONE_TASK)
+			task: read_task(RULESET_DOWNLOAD_ONE_TASK),
+			task_meta: ruleset_download_one_task_meta()
 		}, 200, trace_id, "Rule Set download task status loaded");
 	} catch (e) {
 		let err = "" + e;
@@ -125,6 +145,7 @@ function ruleset_download_one_start(trace_id, req) {
 			return Success({
 				path: path,
 				task: task,
+				task_meta: ruleset_download_one_task_meta(),
 				started: false,
 				reason: "already_running"
 			}, 200, trace_id, "Rule Set download task is already running");
@@ -144,6 +165,7 @@ function ruleset_download_one_start(trace_id, req) {
 		return Success({
 			path: path,
 			task: task,
+			task_meta: ruleset_download_one_task_meta(),
 			started: true
 		}, 202, trace_id, "Rule Set download task started");
 	} catch (e) {
@@ -165,6 +187,7 @@ function ruleset_download_required_start(trace_id, req) {
 			return Success({
 				path: path,
 				task: task,
+				task_meta: ruleset_sync_task_meta(),
 				started: false,
 				reason: "already_running"
 			}, 200, trace_id, "Rule Set sync task is already running");
@@ -188,6 +211,7 @@ function ruleset_download_required_start(trace_id, req) {
 		return Success({
 			path: path,
 			task: task,
+			task_meta: ruleset_sync_task_meta(),
 			started: true
 		}, 202, trace_id, "Rule Set sync task started");
 	} catch (e) {

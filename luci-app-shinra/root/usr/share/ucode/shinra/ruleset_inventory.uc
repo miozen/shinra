@@ -9,7 +9,7 @@ import { PATH } from 'shinra.core.constants';
 import { Success, Fail } from 'shinra.core.result';
 import { ERR } from 'shinra.core.error';
 import { read_text, parse_json_object, file_exists } from 'shinra.core.utils';
-import { normalized_subscriptions_config } from 'shinra.ruleset_policy';
+import { ruleset_policy_config } from 'shinra.ruleset_policy';
 import { ruleset_urls } from 'shinra.ruleset_download';
 
 function starts_with(value, prefix) {
@@ -527,7 +527,7 @@ function ruleset_required_inventory(trace_id, req) {
 	try {
 		let required_info = required_entries_from_profile();
 		let required = required_info.entries;
-		let config = normalized_subscriptions_config();
+		let ruleset_policy = ruleset_policy_config().policy;
 		let locals = local_rule_files();
 		let required_map = {};
 		let entries = [];
@@ -540,7 +540,7 @@ function ruleset_required_inventory(trace_id, req) {
 			let local_path = PATH.RULE_DIR + "/" + tag + ".srs";
 			let meta = file_metadata(local_path);
 			let status = meta.exists && meta.size > 0 ? "ready" : "missing";
-			let urls = ruleset_urls(entry, config.ruleset);
+			let urls = ruleset_urls(entry, ruleset_policy);
 			required_map[tag] = true;
 
 			if (status == "ready")
@@ -599,8 +599,8 @@ function ruleset_required_inventory(trace_id, req) {
 			source: "profile",
 			profile_path: PATH.PROFILE,
 			rule_dir: PATH.RULE_DIR,
-			mode: config.ruleset.mode,
-			fetch_strategy: config.ruleset.fetch_strategy,
+			mode: ruleset_policy.mode,
+			fetch_strategy: ruleset_policy.fetch_strategy,
 			summary: {
 				required_count: length(required),
 				ready_count: ready,

@@ -6,7 +6,7 @@
 
 import { PATH } from 'shinra.core.constants';
 import { read_optional_text, parse_json_object } from 'shinra.core.utils';
-import { validate_refresh_strategy } from 'shinra.subscription_policy';
+import { validate_refresh_strategy } from 'shinra.subscription_policy_schema';
 
 function validate_outbounds(outbounds) {
 	if (type(outbounds) != "array")

@@ -9,7 +9,7 @@ import { Success, Fail } from 'shinra.core.result';
 import { ERR } from 'shinra.core.error';
 import { file_exists, json_stringify_pretty } from 'shinra.core.utils';
 import { artifact_check_config, artifact_write_candidate } from 'shinra.core.artifact';
-import { parse_profile, parse_node_snapshot, parse_subscriptions_policy } from 'shinra.generator_input';
+import { parse_profile, parse_node_snapshot, parse_subscriptions_policy, parse_ruleset_policy } from 'shinra.generator_input';
 import { validate_tun_contract, validate_extensions, strip_extensions, validate_references } from 'shinra.generator_validate';
 import { collect_profile_tags, normalized_nodes, collect_node_tags } from 'shinra.generator_nodes';
 import { generate_region_groups, grouped_node_tags, unmatched_node_tag_list, matched_node_count } from 'shinra.generator_groups';
@@ -22,6 +22,7 @@ function generate_candidate(trace_id, req) {
 		let profile = parse_profile();
 		let snapshot = parse_node_snapshot();
 		let subscriptions = parse_subscriptions_policy();
+		let ruleset_policy = parse_ruleset_policy();
 		validate_extensions(profile);
 
 		let profile_tags = collect_profile_tags(profile);
@@ -36,7 +37,7 @@ function generate_candidate(trace_id, req) {
 		let injected = inject_selectors(profile, nodes, groups);
 		let main_options = main_selector_option_count(profile);
 		merge_outbounds(profile, groups, nodes);
-		let ruleset = localize_rulesets(profile, subscriptions);
+		let ruleset = localize_rulesets(profile, ruleset_policy);
 		let api_service = apply_dashboard_api_service(profile);
 		let control_proxy = ensure_control_plane_proxy_inbound(profile);
 		validate_tun_contract(profile);
@@ -51,6 +52,7 @@ function generate_candidate(trace_id, req) {
 			node_count: length(nodes),
 			skipped_banned: normalized.skipped_banned,
 			skipped_high_rate: normalized.skipped_high_rate,
+			skipped_inactive_source: normalized.skipped_inactive_source,
 			generated_groups: length(groups),
 			matched_node_count: matched_count,
 			unmatched_node_count: unmatched_count,

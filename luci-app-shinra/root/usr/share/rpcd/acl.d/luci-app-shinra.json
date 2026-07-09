@@ -5,6 +5,7 @@
       "ubus": {
         "shinra": [
           "status",
+          "overview_status",
           "profile_get",
           "profile_source_get",
           "profile_validate",

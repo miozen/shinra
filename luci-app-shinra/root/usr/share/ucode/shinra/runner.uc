@@ -1,5 +1,5 @@
 /**
- * Shinra | core/runner.uc | v1.0
+ * Shinra | runner.uc | v1.0
  */
 
 'use strict';
@@ -11,6 +11,13 @@ import { start_task, running_task, fail_task } from 'shinra.core.task';
 import { ruleset_download_required, ruleset_download_one } from 'shinra.ruleset';
 import { subscriptions_refresh, subscription_refresh_source } from 'shinra.subscription';
 import { notify_result_best_effort } from 'shinra.notify';
+
+const TARGETS = {
+	"ruleset.sync:ruleset_download_required": ruleset_download_required,
+	"ruleset.download_one:ruleset_download_one": ruleset_download_one,
+	"subscription.refresh:subscriptions_refresh": subscriptions_refresh,
+	"subscription.refresh:subscription_refresh_source": subscription_refresh_source
+};
 
 function ensure_dir(path) {
 	let info = stat(path);
@@ -57,27 +64,20 @@ function runner_log(task_type, trace_id, level, message) {
 	write_text_atomic(path, read_optional_text(path) + line);
 }
 
+function target_key(task_type, target) {
+	return task_type + ":" + target;
+}
+
 function allowed_target(task_type, target) {
-	return (task_type == "ruleset.sync" && target == "ruleset_download_required") ||
-		(task_type == "ruleset.download_one" && target == "ruleset_download_one") ||
-		(task_type == "subscription.refresh" && target == "subscriptions_refresh") ||
-		(task_type == "subscription.refresh" && target == "subscription_refresh_source");
+	return TARGETS[target_key(task_type, target)] != null;
 }
 
 function execute_target(task_type, target, trace_id, req) {
-	if (!allowed_target(task_type, target))
+	let fn = TARGETS[target_key(task_type, target)];
+	if (fn == null)
 		die("Runner target is not allowed: " + task_type + " " + target);
 
-	if (task_type == "ruleset.sync" && target == "ruleset_download_required")
-		return ruleset_download_required(trace_id, req || {});
-	if (task_type == "ruleset.download_one" && target == "ruleset_download_one")
-		return ruleset_download_one(trace_id, req || {});
-	if (task_type == "subscription.refresh" && target == "subscriptions_refresh")
-		return subscriptions_refresh(trace_id, req || {});
-	if (task_type == "subscription.refresh" && target == "subscription_refresh_source")
-		return subscription_refresh_source(trace_id, req || {});
-
-	die("Runner target is not implemented: " + task_type + " " + target);
+	return fn(trace_id, req || {});
 }
 
 function notify_enabled(req) {

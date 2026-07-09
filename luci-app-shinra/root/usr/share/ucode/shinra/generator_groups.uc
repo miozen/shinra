@@ -5,6 +5,7 @@
 'use strict';
 
 import { append_unique, upper_text, tag_contains_keyword } from 'shinra.generator_util';
+import { rate_filter_excludes_from_urltest } from 'shinra.generator_nodes';
 
 function default_region_order() {
 	return [ "HK", "TW", "SG", "JP", "US" ];
@@ -21,12 +22,14 @@ function source_policy_map(config) {
 	for (let source in config.sources) {
 		if (type(source) != "object" || source == null || type(source) == "array")
 			die("Subscription source must be an object");
+		if (type(source.id) != "string" || source.id == "")
+			die("Subscription source id must be a non-empty string");
 		if (type(source.name) != "string" || source.name == "")
 			die("Subscription source name must be a non-empty string");
-		if (sources[source.name])
-			die("Duplicated subscription source name: " + source.name);
+		if (sources[source.id])
+			die("Duplicated subscription source id: " + source.id);
 
-		sources[source.name] = source;
+		sources[source.id] = source;
 	}
 	return sources;
 }
@@ -93,8 +96,8 @@ function generate_region_groups(config, nodes, profile_tags, node_tags) {
 	let keywords = config.region_keywords;
 	let urltest = config.urltest_params;
 
-	for (let source_name in sources) {
-		let source = sources[source_name];
+	for (let source_id in sources) {
+		let source = sources[source_id];
 		if (source.enabled == false)
 			continue;
 
@@ -105,7 +108,9 @@ function generate_region_groups(config, nodes, profile_tags, node_tags) {
 
 			let outbounds = [];
 			for (let node in nodes) {
-				if (node.x_shinra_source != source_name)
+				if (node.x_shinra_source_id != source_id)
+					continue;
+				if (rate_filter_excludes_from_urltest(node.tag, config))
 					continue;
 				if (!node_matches_region(node, keywords[region]))
 					continue;
@@ -115,7 +120,7 @@ function generate_region_groups(config, nodes, profile_tags, node_tags) {
 			if (length(outbounds) == 0)
 				continue;
 
-			let tag = make_region_group_tag(region, source_name);
+			let tag = make_region_group_tag(region, source.name);
 			if (profile_tags[tag])
 				die("Generated region group tag conflicts with Profile outbound tag: " + tag);
 			if (node_tags[tag])
