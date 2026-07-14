@@ -14,12 +14,12 @@
     ],
     "rules": [
     { "action": "reject", "rule_set": "geosite-category-ads-all", "method": "default" },
-    { "action": "route", "clash_mode": "direct", "server": "Ali-DNS" },
+    { "action": "route", "clash_mode": "direct", "server": "PaoPao-DNS" },
     { "action": "route", "clash_mode": "global", "server": "Cloudflare-DNS" },
-    { "action": "route", "rule_set": "geosite-cn", "server": "Ali-DNS" },
+    { "action": "route", "rule_set": ["geosite-cn", "geosite-private"], "server": "PaoPao-DNS" },
     { "action": "route", "rule_set": "geosite-geolocation-!cn", "server": "Cloudflare-DNS" },
     { "action": "evaluate", "server": "Cloudflare-DNS" },
-    { "action": "route", "match_response": true, "rule_set": "geoip-cn", "server": "Ali-DNS" },
+    { "action": "route", "match_response": true, "rule_set": "geoip-cn", "server": "PaoPao-DNS" },
     { "action": "route", "server": "Cloudflare-DNS" }
 ],
     "final": "Google-DNS",
@@ -105,7 +105,7 @@
     "default_http_client": "global-downloader",
     "auto_detect_interface": true,
     "final": "🐟 漏网之鱼",
-    "default_domain_resolver": { "server": "Ali-DNS" }
+    "default_domain_resolver": { "server": "PaoPao-DNS" }
   },
   "experimental": {
     "cache_file": { "enabled": true, "store_dns": true }
