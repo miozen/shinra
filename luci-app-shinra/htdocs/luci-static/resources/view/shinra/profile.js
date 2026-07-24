@@ -41,7 +41,7 @@ const callProfileRollback = rpc.declare({
 	expect: { '': {} }
 });
 
-const DEFAULT_TEMPLATE_URL = 'https://testingcf.jsdelivr.net/gh/Vonzhen/singbox-profiles@master/profiles/main-profile.json';
+const DEFAULT_TEMPLATE_URL = 'https://testingcf.jsdelivr.net/gh/Vonzhen/shinra@master/profiles/main-profile.json';
 
 let profileResult = null;
 let sourceResult = null;

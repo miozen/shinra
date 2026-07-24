@@ -56,8 +56,14 @@ function rate_pattern_enabled(patterns, name) {
 }
 
 function parse_number_x_rate(value, start, include_integer_one) {
+	if (start > 0) {
+		let previous = substr(value, start - 1, 1);
+		if (is_digit(previous) || previous == ".")
+			return null;
+	}
+
 	let first = substr(value, start, 1);
-	if (!is_digit(first) || first == "0")
+	if (!is_digit(first))
 		return null;
 
 	let size = length(value);
@@ -98,8 +104,14 @@ function parse_number_x_rate(value, start, include_integer_one) {
 }
 
 function parse_number_times_cn_rate(value, start, include_integer_one) {
+	if (start > 0) {
+		let previous = substr(value, start - 1, 1);
+		if (is_digit(previous) || previous == ".")
+			return null;
+	}
+
 	let first = substr(value, start, 1);
-	if (!is_digit(first) || first == "0")
+	if (!is_digit(first))
 		return null;
 
 	let size = length(value);
@@ -144,19 +156,24 @@ function parse_number_times_cn_rate(value, start, include_integer_one) {
 function parse_rate_marker(tag, patterns, include_integer_one) {
 	let value = upper_text(tag);
 	let size = length(value);
+	let best_rate = null;
 
 	for (let i = 0; i < size; i = i + 1) {
 		if (rate_pattern_enabled(patterns, "number_x")) {
 			let rate = parse_number_x_rate(value, i, include_integer_one);
-			if (rate != null)
-				return rate;
+			if (rate != null && (best_rate == null || rate.value > best_rate.value))
+				best_rate = rate;
 		}
+
 		if (rate_pattern_enabled(patterns, "number_times_cn")) {
 			let rate = parse_number_times_cn_rate(value, i, include_integer_one);
-			if (rate != null)
-				return rate;
+			if (rate != null && (best_rate == null || rate.value > best_rate.value))
+				best_rate = rate;
 		}
 	}
+
+	if (best_rate != null)
+		return best_rate;
 
 	return {
 		matched: false,
