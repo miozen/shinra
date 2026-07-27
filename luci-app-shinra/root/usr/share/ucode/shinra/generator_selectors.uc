@@ -117,7 +117,7 @@ function inject_selectors(profile, nodes, groups) {
 	return injected;
 }
 
-function merge_outbounds(profile, groups, nodes) {
+function merge_outbounds(profile, groups, manual_selector, nodes) {
 	let merged = [];
 
 	for (let outbound in profile.outbounds) {
@@ -127,6 +127,8 @@ function merge_outbounds(profile, groups, nodes) {
 
 	for (let group in groups)
 		push(merged, group);
+
+	push(merged, manual_selector);
 
 	for (let node in nodes)
 		push(merged, node);

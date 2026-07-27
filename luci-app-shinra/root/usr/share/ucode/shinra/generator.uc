@@ -13,7 +13,8 @@ import { parse_profile, parse_node_snapshot, parse_subscriptions_policy, parse_r
 import { validate_tun_contract, validate_extensions, strip_extensions, validate_references } from 'shinra.generator_validate';
 import { collect_profile_tags, normalized_nodes, collect_node_tags } from 'shinra.generator_nodes';
 import { generate_region_groups, grouped_node_tags, unmatched_node_tag_list, matched_node_count } from 'shinra.generator_groups';
-import { inject_selectors, main_selector_option_count, merge_outbounds } from 'shinra.generator_selectors';
+import { direct_outbound_tag, inject_selectors, main_selector_option_count, merge_outbounds } from 'shinra.generator_selectors';
+import { collect_manual_selector_consumers, restore_manual_selector_references, generate_manual_selector } from 'shinra.generator_manual_selector';
 import { localize_rulesets } from 'shinra.generator_rulesets';
 import { apply_dashboard_api_service, ensure_control_plane_proxy_inbound } from 'shinra.generator_control_plane';
 
@@ -29,14 +30,17 @@ function generate_candidate(trace_id, req) {
 		let normalized = normalized_nodes(snapshot, profile_tags, subscriptions);
 		let nodes = normalized.nodes;
 		let node_tags = collect_node_tags(nodes);
+		let manual_consumers = collect_manual_selector_consumers(profile);
 		let groups = generate_region_groups(subscriptions, nodes, profile_tags, node_tags);
 		let matched_nodes = grouped_node_tags(groups);
 		let unmatched_nodes = unmatched_node_tag_list(nodes, matched_nodes);
 		let matched_count = matched_node_count(nodes, matched_nodes);
 		let unmatched_count = length(unmatched_nodes);
 		let injected = inject_selectors(profile, nodes, groups);
+		restore_manual_selector_references(profile, manual_consumers);
+		let manual_selector = generate_manual_selector(subscriptions, nodes, direct_outbound_tag(profile), profile_tags, node_tags);
 		let main_options = main_selector_option_count(profile);
-		merge_outbounds(profile, groups, nodes);
+		merge_outbounds(profile, groups, manual_selector, nodes);
 		let ruleset = localize_rulesets(profile, ruleset_policy);
 		let api_service = apply_dashboard_api_service(profile);
 		let control_proxy = ensure_control_plane_proxy_inbound(profile);
