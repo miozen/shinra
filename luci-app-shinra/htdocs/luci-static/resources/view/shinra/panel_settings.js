@@ -23,7 +23,7 @@ const callDashboardStatus = rpc.declare({
 	expect: { '': {} }
 });
 
-const DEFAULT_DOWNLOAD_URL = 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip';
+const DEFAULT_DOWNLOAD_URL = 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-sarasa-only.zip';
 
 let sourceResult = null;
 let statusResult = null;

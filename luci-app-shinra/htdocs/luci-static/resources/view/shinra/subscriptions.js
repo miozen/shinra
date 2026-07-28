@@ -191,6 +191,11 @@ function normalizePolicy(raw) {
 		schema_version: 1,
 		refresh_strategy: policy.refresh_strategy === 'proxy' ? 'proxy' : 'direct',
 		region_keywords: regionKeywords,
+		manual_selector: {
+			keywords: policy.manual_selector && Array.isArray(policy.manual_selector.keywords) ? policy.manual_selector.keywords.filter(function(value) {
+				return typeof value === 'string' && value !== '';
+			}) : []
+		},
 		banned_keywords: mergePipeText(DEFAULT_BANNED_KEYWORDS, policy.banned_keywords),
 		urltest_params: {
 			url: normalizeUrltestUrl(policy.urltest_params && policy.urltest_params.url),
@@ -468,7 +473,15 @@ function policySettings(policy) {
 					'style': 'width: 100%;',
 					'value': (policy.region_keywords[region] || []).join(', ')
 				}));
-			}))
+			})),
+			field(_('手动选择关键词'), E('textarea', {
+				'id': 'shinra-manual-selector-keywords',
+				'class': 'cbi-input-textarea',
+				'style': 'width: 100%; min-height: 4rem; font-family: monospace;',
+				'spellcheck': 'false',
+				'placeholder': _('例如：Brazil, 巴西, 🇧🇷, Turkey, 土耳其, 🇹🇷')
+			}, [ (policy.manual_selector.keywords || []).join(', ') ])),
+			E('div', { 'style': 'color: #667; font-size: .9em; margin-top: -.35rem;' }, _('用于生成“🪒 手动选择”组，多个关键词可使用逗号或换行分隔。'))
 		]),
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('清洗与 URLTest')),
@@ -897,6 +910,13 @@ function collectPolicyFromPage() {
 			return value !== '';
 		});
 	});
+	policy.manual_selector = {
+		keywords: getValue('shinra-manual-selector-keywords').split(/[\n,]+/).map(function(value) {
+			return value.trim();
+		}).filter(function(value) {
+			return value !== '';
+		})
+	};
 	policy.banned_keywords = getValue('shinra-banned-keywords') || DEFAULT_BANNED_KEYWORDS;
 	policy.urltest_params = {
 		url: normalizeUrltestUrl(getValue('shinra-urltest-url')),

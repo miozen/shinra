@@ -39,6 +39,12 @@ function default_urltest_params() {
 	};
 }
 
+function default_manual_selector() {
+	return {
+		keywords: []
+	};
+}
+
 function default_rate_filter() {
 	return {
 		enabled: true,
@@ -265,6 +271,16 @@ function normalize_region_keywords(raw) {
 		die("region_keywords must not be empty");
 
 	return result;
+}
+
+function normalize_manual_selector(raw) {
+	let defaults = default_manual_selector();
+	if (type(raw) != "object" || raw == null || type(raw) == "array")
+		return defaults;
+
+	return {
+		keywords: type(raw.keywords) == "array" ? clone_string_array(raw.keywords, "manual_selector.keywords") : defaults.keywords
+	};
 }
 
 function region_keys(region_keywords) {
@@ -541,6 +557,7 @@ function normalize_subscriptions_policy(config) {
 		refresh_strategy: strategy,
 		region_keywords: keywords,
 		region_keys: regions,
+		manual_selector: normalize_manual_selector(config.manual_selector),
 		banned_keywords: merge_pipe_text(default_banned_keywords(), config.banned_keywords),
 		urltest_params: normalize_urltest_params(config.urltest_params),
 		rate_filter: normalize_rate_filter(config.rate_filter, regions),
@@ -549,5 +566,5 @@ function normalize_subscriptions_policy(config) {
 	};
 }
 
-export { default_region_keywords, default_banned_keywords, default_urltest_params, default_rate_filter, default_subscription_update_policy, validate_refresh_strategy, validate_fetch_strategy, normalize_subscriptions_policy };
+export { default_region_keywords, default_banned_keywords, default_urltest_params, default_manual_selector, default_rate_filter, default_subscription_update_policy, validate_refresh_strategy, validate_fetch_strategy, normalize_subscriptions_policy };
 

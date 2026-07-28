@@ -8,6 +8,9 @@
     "JP": ["JP", "Japan"],
     "US": ["US", "USA", "United States"]
   },
+  "manual_selector": {
+    "keywords": []
+  },
   "banned_keywords": "expire|expired|traffic|invalid|remaining",
   "urltest_params": {
     "url": "https://www.gstatic.com/generate_204",
