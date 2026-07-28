@@ -6,7 +6,7 @@
 
 import { append_unique, upper_text, tag_contains_keyword } from 'shinra.generator_util';
 
-const MANUAL_SELECTOR_TAG = "🪒 手动选择";
+const MANUAL_SELECTOR_TAG = "🍭 手动选择";
 
 function collect_manual_selector_consumers(profile) {
 	let consumers = {};
