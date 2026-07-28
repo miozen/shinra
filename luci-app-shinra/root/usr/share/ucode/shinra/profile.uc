@@ -53,7 +53,7 @@ function validate_profile_content(content) {
 function default_profile_source() {
 	return {
 		schema_version: 1,
-		url: "https://testingcf.jsdelivr.net/gh/Vonzhen/singbox-profiles@master/profiles/main-profile.json",
+		url: "https://testingcf.jsdelivr.net/gh/miozen/singbox-profiles@master/profiles/main-profile.json",
 		fetch_strategy: "direct",
 		updated_at: ""
 	};

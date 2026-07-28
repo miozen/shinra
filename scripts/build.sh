@@ -273,7 +273,7 @@ build_apk() {
 		--info "version:${apk_version}" \
 		--info "description:Shinra sing-box TUN control panel for LuCI." \
 		--info "arch:${apk_arch}" \
-		--info "origin:https://github.com/Vonzhen/shinra" \
+		--info "origin:https://github.com/miozen/shinra" \
 		--info "url:" \
 		--info "maintainer:Von <noreply@example.com>" \
 		--info "provides:" \
