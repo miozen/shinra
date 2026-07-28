@@ -481,7 +481,7 @@ function policySettings(policy) {
 				'spellcheck': 'false',
 				'placeholder': _('例如：Brazil, 巴西, 🇧🇷, Turkey, 土耳其, 🇹🇷')
 			}, [ (policy.manual_selector.keywords || []).join(', ') ])),
-			E('div', { 'style': 'color: #667; font-size: .9em; margin-top: -.35rem;' }, _('用于生成“🪒 手动选择”组，多个关键词可使用逗号或换行分隔。'))
+			E('div', { 'style': 'color: #667; font-size: .9em; margin-top: -.35rem;' }, _('用于生成“🍭 手动选择”组，多个关键词可使用逗号或换行分隔。'))
 		]),
 		E('div', { 'style': sectionStyle() }, [
 			sectionTitle(_('清洗与 URLTest')),
